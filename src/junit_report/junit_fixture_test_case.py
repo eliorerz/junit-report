@@ -1,6 +1,6 @@
 import inspect
 import re
-from typing import Callable, Union, List
+from typing import Callable, List, Union
 
 from _pytest.mark import Mark
 from _pytest.python import Function

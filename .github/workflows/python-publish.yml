@@ -1,0 +1,36 @@
+name: CI - Upload Python Package
+
+on:
+  workflow_run:
+    workflows: ["CI - Unit Tests"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install wheel==0.36.2 vcversioner==2.16.0.0 tox==3.23.0
+
+    - name: Versioning
+      run: |
+        git config --global user.email "you@example.com"
+        git config --global user.name "Elior Erez"
+        python version.py
+
+    - name: Build and publish
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        tox -e release

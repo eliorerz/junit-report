@@ -1,8 +1,9 @@
 import io
 import shutil
+from collections import OrderedDict
 from contextlib import redirect_stdout
 from pathlib import Path
-from typing import OrderedDict, Tuple
+from typing import Tuple
 
 import pytest
 import xmltodict

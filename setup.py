@@ -5,8 +5,8 @@ import setuptools
 
 ROOT = os.path.dirname(__file__)
 
-if sys.version_info < (3, 7, 0):
-    sys.exit("Python 3.7.0 is the minimum required version")
+if sys.version_info < (3, 6, 0):
+    sys.exit("Python 3.6.0 is the minimum required version")
 
 with open(os.path.join(ROOT, "README.md")) as f:
     long_description = f.read()
@@ -33,13 +33,14 @@ setuptools.setup(
     install_requires=requirements,
     tests_require=requirements + test_requirements,
     include_package_data=True,
-    python_requires=">=3.7.0",
+    python_requires=">=3.6.0",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

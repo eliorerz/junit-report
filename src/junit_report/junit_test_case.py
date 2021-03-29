@@ -46,6 +46,29 @@ class JunitTestCase:
         if self._func:
             return self._func.__name__
 
+    def _wrapper(self, function: Callable, obj: Any, *args, **kwargs):
+        """
+        :param _:  @ignored - Decorated test suite function -
+        :param obj: Class instance of which the decorated function contained in it
+        :param args: Arguments passed to the function
+        :param kwargs: Arguments passed to the function
+        :return: function results
+        """
+        start = time.time()
+        self._case = TestCase(name=self.name,
+                              classname=obj.__class__.__name__,
+                              category=TestCaseCategories.FUNCTION)
+        try:
+            value = function(obj, *args, **kwargs)
+        except BaseException as e:
+            failure = CaseFailure(message=str(e), output=traceback.format_exc(), type=e.__class__.__name__)
+            self._case.failures.append(failure)
+            raise
+        finally:
+            self._case.elapsed_sec = time.time() - start
+            self._finalize()
+        return value
+
     def __call__(self, function: Callable) -> Callable:
         """
         Create a TestCase object for each executed decorated test case function and register it into the relevant
@@ -59,27 +82,7 @@ class JunitTestCase:
         self._func = function
 
         def wrapper(_, obj: Any, *args, **kwargs):
-            """
-            :param _:  @ignored - Decorated test suite function -
-            :param obj: Class instance of which the decorated function contained in it
-            :param args: Arguments passed to the function
-            :param kwargs: Arguments passed to the function
-            :return: function results
-            """
-            start = time.time()
-            self._case = TestCase(name=self.name,
-                                  classname=obj.__class__.__name__,
-                                  category=TestCaseCategories.FUNCTION)
-            try:
-                value = function(obj, *args, **kwargs)
-            except BaseException as e:
-                failure = CaseFailure(message=str(e), output=traceback.format_exc(), type=e.__class__.__name__)
-                self._case.failures.append(failure)
-                raise
-            finally:
-                self._case.elapsed_sec = time.time() - start
-                self._finalize()
-            return value
+            return self._wrapper(function, obj, *args, **kwargs)
 
         return decorator.decorator(wrapper, function)
 

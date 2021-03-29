@@ -110,6 +110,25 @@ class TestWithPytestDecorators(BaseTest):
             functions_count=cases_count * permutations_count,
         )
 
+    def test_junit_report_fixture_yield_none(self):
+        test = "external_tests/_test_junit_report_fixtures_yield.py"
+        expected_suite_name = "TestJunitFixtureTestCase_test_suite_fixture_yield"
+        expected_case_count = 0
+        expected_fixtures_count = 3
+        expected_failures = 0
+
+        exit_code, _ = self.execute_test(test)
+        assert exit_code == ExitCode.OK
+        xml_results = self.get_test_report(suite_name=expected_suite_name)
+        self.assert_xml_report_results_with_cases(
+            xml_results,
+            failures=expected_failures,
+            testsuite_tests=expected_fixtures_count,
+            testsuite_name=expected_suite_name,
+            fixtures_count=expected_fixtures_count,
+            functions_count=expected_case_count,
+        )
+
     def test_junit_report_fixtures_with_exceptions(self):
         test = "external_tests/_test_junit_report_fixtures_with_exceptions.py"
         expected_suite_name = "fixture_test_suite_fixture_throws_exception"

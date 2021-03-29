@@ -12,12 +12,12 @@ class TestJunitFixtureTestCase:
     @pytest.fixture(scope="function")
     @JunitFixtureTestCase()
     def some_fixture(self):
-        pass
+        yield
 
     @pytest.fixture(scope="function")
     @JunitFixtureTestCase()
     def other_fixture(self):
-        pass
+        yield
 
     @JunitTestSuite(REPORT_DIR)
     @pytest.mark.parametrize("version", ["5.1", "6.21980874565", 6.5, "some__long_string_that_is_not_a_number"])

@@ -34,22 +34,39 @@ class GitVersion:
         return re.compile(r"v([0-9])\.([0-9])\.([0-9])").findall(version).pop()  # major, minor, patch
 
     @classmethod
+    def increment_version(cls, branch_name: str):
+        major, minor, patch = cls.get_version()
+        if branch_name == "main":
+            updated_patch = str(int(patch) + 1)
+            updated_minor = minor
+        else:
+            updated_patch = 0
+            updated_minor = str(int(minor) + 1)
+
+        version = f"v{major}.{updated_minor}.{updated_patch}"
+        print(f"Version patch incremented by one v{major}.{minor}.{patch} -> {version}")
+        return version
+
+    @classmethod
+    def update_branch(cls):
+        try:
+            cls.sys_exec("git fetch --prune --unshallow".split())
+        except subprocess.CalledProcessError:
+            pass
+
+    @classmethod
     def main(cls):
         print("Starting versioning process...")
-        if cls.get_branch() != "main":
-            print("Tag occur only on master/main branch")
+        branch_name = cls.get_branch()
+        if branch_name != "main" and not branch_name.startswith("release"):
+            print("Tag occur only on release or main branch")
             return
 
-        print("Fetching git history... ", end="")
-        cls.sys_exec("git fetch --prune --unshallow".split())
+        print(f"Fetching git history ({branch_name})... ", end="")
+        cls.update_branch()
         print("Done")
 
-        major, minor, patch = cls.get_version()
-        updated_patch = str(int(patch) + 1)
-        version = f"v{major}.{minor}.{updated_patch}"
-        print(f"Version patch incremented by one v{major}.{minor}.{patch} -> {version}")
-        cls.tag(version)
-
+        cls.tag(cls.increment_version(branch_name))
         print("Versioning process done!")
 
 

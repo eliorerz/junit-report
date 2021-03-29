@@ -1,7 +1,8 @@
 import inspect
 import re
-from typing import Callable, Union, List, Any
+from typing import Any, Callable, List, Union
 
+import decorator
 from _pytest.mark import Mark
 from _pytest.python import Function
 
@@ -19,9 +20,35 @@ class JunitFixtureTestCase(JunitTestCase):
             ...
     """
 
-    def _wrapper(self, function: Callable, obj: Any, *args, **kwargs):
-        generator = super()._wrapper(function, obj, *args, **kwargs)
+    def __init__(self) -> None:
+        super().__init__()
+        self._generator = None
+
+    def __call__(self, function: Callable) -> Callable:
+        self._func = function
+
+        def wrapper(_, obj: Any, *args, **kwargs):
+            value = self._wrapper(function, obj, *args, **kwargs)
+            yield value
+            if self._generator:
+                self._teardown_yield_fixture(self._generator)
+
+        return decorator.decorator(wrapper, function)
+
+    @classmethod
+    def _teardown_yield_fixture(cls, it) -> None:
+        """Execute the teardown of a fixture function by advancing the iterator
+        after the yield and ensure the iteration ends (if not it means there is
+        more than one yield in the function)."""
         try:
+            next(it)
+        except (StopIteration, ValueError, TypeError):
+            pass
+
+    def _execute_function(self, function: Callable, obj: Any, *args, **kwargs):
+        generator = function(obj, *args, **kwargs)
+        try:
+            self._generator = generator
             return next(generator)
         except (StopIteration, TypeError):
             return None

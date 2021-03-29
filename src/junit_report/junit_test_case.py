@@ -46,6 +46,9 @@ class JunitTestCase:
         if self._func:
             return self._func.__name__
 
+    def _execute_function(self, function: Callable, obj: Any, *args, **kwargs):
+        return function(obj, *args, **kwargs)
+
     def _wrapper(self, function: Callable, obj: Any, *args, **kwargs):
         """
         :param _:  @ignored - Decorated test suite function -
@@ -59,7 +62,7 @@ class JunitTestCase:
                               classname=obj.__class__.__name__,
                               category=TestCaseCategories.FUNCTION)
         try:
-            value = function(obj, *args, **kwargs)
+            value = self._execute_function(function, obj, *args, **kwargs)
         except BaseException as e:
             failure = CaseFailure(message=str(e), output=traceback.format_exc(), type=e.__class__.__name__)
             self._case.failures.append(failure)

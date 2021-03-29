@@ -12,12 +12,12 @@ class TestJunitFixtureTestCase:
     @pytest.fixture(scope="function")
     @JunitFixtureTestCase()
     def some_fixture(self):
-        pass
+        yield
 
     @pytest.fixture(scope="function")
     @JunitFixtureTestCase()
     def other_fixture(self):
-        pass
+        yield
 
     @JunitTestSuite(REPORT_DIR)
     def test_suite_two_fixtures(self, some_fixture, other_fixture):

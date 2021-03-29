@@ -1,6 +1,6 @@
 import inspect
 import re
-from typing import Callable, List, Union
+from typing import Callable, Union, List, Any
 
 from _pytest.mark import Mark
 from _pytest.python import Function
@@ -18,6 +18,13 @@ class JunitFixtureTestCase(JunitTestCase):
         def my_fixture()
             ...
     """
+
+    def _wrapper(self, function: Callable, obj: Any, *args, **kwargs):
+        generator = super()._wrapper(function, obj, *args, **kwargs)
+        try:
+            return next(generator)
+        except (StopIteration, TypeError):
+            return None
 
     def _finalize(self):
         """

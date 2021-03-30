@@ -1,12 +1,21 @@
 
-junit-report
-===========
----
+# Junit-Report
+
 This Python package adds more control to your tests by decorating your functions and pytest fixtures and exporting them as JUnit xml.
+
+**Table of contents**
+
+- [Junit-Report](#junit-report)
+  - [Installation](#installation)
+  - [Usage](#usage)
+  - [OS parameters used for configuration](#os-parameters-used-for-configuration)
+
 
 ## Installation
 
-`pip install junit-report`
+```bash
+pip install junit-report
+```
 
 
 ##  Usage 
@@ -52,5 +61,11 @@ class TestSomeThing:
 		</testcase>
 	</testsuite>
 </testsuites>
-
 ```
+
+## OS parameters used for configuration
+
+| Variable                    | Description                                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| JUNIT_REPORT_DIR            | Reports directory where the reports will be extracted. If it does not exist - create it.                                                        |
+| FAIL_ON_MISSING_SUITE       | Decide whether the test will throw a SuiteNotExistError exception if a JunitTestCase does not have a suite parent. <br/> Available values: 'True', 'true', 'y', 'Y', '1'                                                 |

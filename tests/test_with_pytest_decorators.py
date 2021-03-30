@@ -1,4 +1,5 @@
 import io
+import os
 import shutil
 from collections import OrderedDict
 from contextlib import redirect_stdout
@@ -129,6 +130,27 @@ class TestWithPytestDecorators(BaseTest):
             fixtures_count=expected_fixtures_count,
             functions_count=expected_case_count,
         )
+
+        expected_before_yield = "0"
+        expected_in_case = "1"
+        expected_after_yield = "2"
+
+        file_before_yield_path = "file_before_yield"
+        file_in_case_path = "file_in_case"
+        file_after_yield_path = "file_after_yield"
+
+        with open(file_before_yield_path) as f:
+            assert f.read() == expected_before_yield
+
+        with open(file_in_case_path) as f:
+            assert f.read() == expected_in_case
+
+        with open(file_after_yield_path) as f:
+            assert f.read() == expected_after_yield
+
+        os.remove(file_before_yield_path)
+        os.remove(file_in_case_path)
+        os.remove(file_after_yield_path)
 
     def test_junit_report_fixtures_with_exceptions(self):
         test = "external_tests/_test_junit_report_fixtures_with_exceptions.py"

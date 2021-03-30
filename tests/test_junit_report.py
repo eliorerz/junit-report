@@ -17,7 +17,6 @@ class TestJunitReport(BaseTest):
     def teardown(cls):
         yield
         shutil.rmtree(REPORT_DIR, ignore_errors=True)
-        # JunitTestSuite._junit_suites = dict()
 
     @pytest.fixture
     def base_class(self):
@@ -156,8 +155,12 @@ class TestJunitReport(BaseTest):
         def some_suite():
             pass
 
+        JunitTestSuite.FAIL_ON_MISSING_SUITE = True
         with pytest.raises(SuiteNotExistError):
             JunitTestSuite.register_case(TestCase("case_name"), some_suite)
+
+        JunitTestSuite.FAIL_ON_MISSING_SUITE = False
+        JunitTestSuite.register_case(TestCase("case_name"), some_suite)
 
     def test_register(self):
         from junit_xml import TestCase

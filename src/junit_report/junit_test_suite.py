@@ -33,7 +33,10 @@ class JunitTestSuite:
     _klass = Any
 
     DEFAULT_REPORT_PATH_KEY = "JUNIT_REPORT_DIR"
+    FAIL_ON_MISSING_SUITE_KEY = "FAIL_ON_MISSING_SUITE"
+
     XML_REPORT_FORMAT = "junit_{suite_name}_report.xml"
+    FAIL_ON_MISSING_SUITE = os.getenv(FAIL_ON_MISSING_SUITE_KEY, 'False').lower() in ['true', '1', 'yes', 'y']
 
     def __init__(self, report_dir: Path = None):
         """
@@ -141,7 +144,8 @@ class JunitTestSuite:
         :param suite_func: Wrapped function as cases key
         :return: None
         """
-        if not cls.is_suite_exist(suite_func):
-            raise SuiteNotExistError(f"Can't find suite named {suite_func} for {test_case} test case")
-
-        cls._add_case(cls._junit_suites[suite_func], test_case)
+        if cls.is_suite_exist(suite_func):
+            cls._add_case(cls._junit_suites[suite_func], test_case)
+        else:
+            if cls.FAIL_ON_MISSING_SUITE:
+                raise SuiteNotExistError(f"Can't find suite named {suite_func} for {test_case} test case")

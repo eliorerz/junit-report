@@ -31,7 +31,7 @@ class GitVersion:
         version = cls.sys_exec("git describe --abbrev=0".split())
 
         print(f"Found tag {version}")
-        return re.compile(r"v([0-9])\.([0-9])\.([0-9])").findall(version).pop()  # major, minor, patch
+        return re.compile(r"v(\d+)\.(\d+)\.(\d+)").findall(version).pop()  # major, minor, patch
 
     @classmethod
     def increment_version(cls, branch_name: str):

@@ -1,6 +1,7 @@
 import os
+from collections import OrderedDict
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable, List
 
 from src.junit_report import JunitTestSuite, TestCaseCategories
 
@@ -21,11 +22,12 @@ class BaseTest:
         errors=0,
         fixtures_count=0,
         functions_count=0,
-    ):
+    ) -> List[OrderedDict]:
         cases = cls.assert_xml_report_results(xml_results, testsuite_tests, testsuite_name, failures, errors)
 
-        assert len([x for x in cases if x["@class"] == TestCaseCategories.FIXTURE]) == fixtures_count
-        assert len([x for x in cases if x["@class"] == TestCaseCategories.FUNCTION]) == functions_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE]) == fixtures_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.FUNCTION]) == functions_count
+        return cases
 
     @staticmethod
     def assert_xml_report_results(
@@ -34,7 +36,7 @@ class BaseTest:
         testsuite_name: str,
         failures=0,
         errors=0,
-    ) -> Dict[str, str]:
+    ) -> List[OrderedDict]:
         assert "testsuites" in xml_results
         assert int(xml_results["testsuites"]["@failures"]) == failures
         assert int(xml_results["testsuites"]["@errors"]) == errors

@@ -101,7 +101,32 @@ class TestWithPytestDecorators(BaseTest):
         permutations_count = first_mark_count * second_mark_count * third_mark_count * fourth_mark_count
         fixtures_count = 2
         cases_count = 2
-        expected_cases_count = permutations_count * fixtures_count * cases_count
+        expected_cases_count = permutations_count * (fixtures_count + cases_count)
+
+        xml_results = self.get_test_report(suite_name=expected_suite_name)
+        cases = self.assert_xml_report_results_with_cases(
+            xml_results,
+            testsuite_tests=expected_cases_count,
+            testsuite_name=expected_suite_name,
+            fixtures_count=fixtures_count * permutations_count,
+            functions_count=cases_count * permutations_count,
+        )
+
+        # Verify that each case name have the represented values on its name
+        for c in cases:
+            assert "none=None" in c["@name"]
+            assert "animal=" in c["@name"]
+            assert "letter=" in c["@name"]
+            assert "version=" in c["@name"]
+
+        expected_suite_name = "TestJunitFixtureTestCase_test_suite_fixtures_with_marks"
+        first_parametrize_count = 4
+        second_parametrize_count = 3
+        third_parametrize_count = 1
+        permutations_count = first_parametrize_count * second_parametrize_count * third_parametrize_count
+        fixtures_count = 1
+        cases_count = 1
+        expected_cases_count = permutations_count * (fixtures_count + cases_count)
 
         xml_results = self.get_test_report(suite_name=expected_suite_name)
         self.assert_xml_report_results_with_cases(

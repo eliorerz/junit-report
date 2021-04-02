@@ -1,9 +1,10 @@
 import os
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Dict, List, Type, Union
+from typing import Any, Callable, ClassVar, Dict, List, Union
 
-import decorator
 from junit_xml import TestCase, TestSuite, to_xml_report_string
+
+from ._junit_decorator import JunitDecorator
 
 
 class SuiteNotExistError(KeyError):
@@ -14,7 +15,7 @@ class DuplicateSuiteError(KeyError):
     """ Test Suite decorator name is already exist in suites poll """
 
 
-class JunitTestSuite:
+class JunitTestSuite(JunitDecorator):
     """
     JunitTestSuite is a decorator that waits for JunitTestCases decorators to register their testcases instances.
     After all test cases has finished their execution, the JunitTestSuite instance collect all registered TestCases
@@ -42,61 +43,23 @@ class JunitTestSuite:
         """
         :param report_dir: Target directory, created if not exists
         """
+        super().__init__()
         self._report_dir = self.get_report_dir(report_dir)
         self._cases = list()
-        self._func = None
         self._suite = None
         self._klass = None
+
+    def _on_call(self):
+        self._register()
+
+    def _on_wrapper_end(self, *args):
+        self._collect(self._get_class_name(*args))
 
     @classmethod
     def get_report_dir(cls, report_dir: Union[Path, None]) -> Path:
         if report_dir is None:
             return Path(os.getenv(cls.DEFAULT_REPORT_PATH_KEY, Path.cwd()))
         return report_dir
-
-    def __call__(self, function: Callable):
-        """
-        Execute test suite decorated function and export the results to junit xml file
-        :param function: Decorated test suite function
-        :return: Converted caller function into a decorator
-        """
-        self._func = function
-        self._register(function)
-
-        def wrapper(_, obj: Any, *args, **kwargs):
-            """
-            :param _:  @ignored - Decorated test suite function -
-            :param obj: Test class containing the test suite
-            :param args: Function given arguments
-            :param kwargs: Function given keyword arguments
-            :return: Function return value
-            """
-            try:
-                value = function(obj, *args, **kwargs)
-            except BaseException:
-                raise
-            finally:
-                self._collect(obj.__class__)
-            return value
-
-        return decorator.decorator(wrapper, function)
-
-    @property
-    def name(self):
-        if self._func:
-            return self._func.__name__
-        return ""
-
-    def _register(self, function: Callable):
-        if function in JunitTestSuite._junit_suites:
-            raise DuplicateSuiteError(f"Suite {function.__name__} already exist")
-        JunitTestSuite._junit_suites[function] = self
-
-    def _get_cases(self):
-        return self._cases
-
-    def _add_case(self, test_case: TestCase):
-        return self._cases.append(test_case)
 
     @classmethod
     def collect_all(cls):
@@ -111,26 +74,6 @@ class JunitTestSuite:
             )
 
             cls._export(junit_suite)
-
-    def _collect(self, klass: Type[object]):
-        """
-        Collect all TestCases that
-        :param klass: Class of which the decorated function contained in it
-        :return: None
-        """
-        self._suite = TestSuite(
-            name=f"{klass.__name__}_{self.name}",
-            test_cases=self._cases,
-        )
-        self._export()
-
-    def _export(self) -> None:
-        path = self._report_dir.joinpath(self.XML_REPORT_FORMAT.format(suite_name=self._suite.name))
-        xml_string = to_xml_report_string([self._suite])
-
-        os.makedirs(self._report_dir, exist_ok=True)
-        with open(path, "w") as f:
-            f.write(xml_string)
 
     @classmethod
     def is_suite_exist(cls, suite_func: Callable):
@@ -149,3 +92,34 @@ class JunitTestSuite:
         else:
             if cls.FAIL_ON_MISSING_SUITE:
                 raise SuiteNotExistError(f"Can't find suite named {suite_func} for {test_case} test case")
+
+    def _register(self):
+        if self._func in JunitTestSuite._junit_suites:
+            raise DuplicateSuiteError(f"Suite {self.name} already exist")
+        JunitTestSuite._junit_suites[self._func] = self
+
+    def _get_cases(self):
+        return self._cases
+
+    def _add_case(self, test_case: TestCase):
+        return self._cases.append(test_case)
+
+    def _collect(self, class_name: str):
+        """
+        Collect all TestCases that
+        :param class_name: Class name of which the decorated function contained in it
+        :return: None
+        """
+        self._suite = TestSuite(
+            name=f"{class_name}_{self.name}",
+            test_cases=self._cases,
+        )
+        self._export()
+
+    def _export(self) -> None:
+        path = self._report_dir.joinpath(self.XML_REPORT_FORMAT.format(suite_name=self._suite.name))
+        xml_string = to_xml_report_string([self._suite])
+
+        os.makedirs(self._report_dir, exist_ok=True)
+        with open(path, "w") as f:
+            f.write(xml_string)

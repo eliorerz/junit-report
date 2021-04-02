@@ -2,12 +2,12 @@ import inspect
 import time
 import traceback
 from dataclasses import dataclass
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union, Dict
 
-import decorator
 from junit_xml import TestCase
 
-from .junit_test_suite import JunitTestSuite
+from ._junit_decorator import JunitDecorator
+from ._junit_test_suite import JunitTestSuite
 
 
 @dataclass
@@ -25,7 +25,7 @@ class TestCaseCategories:
     FIXTURE = "fixture"
 
 
-class JunitTestCase:
+class JunitTestCase(JunitDecorator):
     """
     JunitTestCase is a decorator that represents single TestCase.
     When the decorated function finished its execution, it's registered to the relevant JunitTestSuite.
@@ -37,8 +37,9 @@ class JunitTestCase:
     _parametrize: Union[None, List[Tuple[str, Any]]]
 
     def __init__(self) -> None:
+        super().__init__()
         self._case = None
-        self._func = None
+        self._start_time = None
         self._parametrize = None
 
     @property
@@ -46,48 +47,18 @@ class JunitTestCase:
         if self._func:
             return self._func.__name__
 
-    def _execute_function(self, function: Callable, obj: Any, *args, **kwargs):
-        return function(obj, *args, **kwargs)
+    def _on_wrapper_start(self, *args):
+        self._start_time = time.time()
+        self._case = TestCase(name=self.name, classname=self._get_class_name(*args),
+                              category=TestCaseCategories.FUNCTION)
 
-    def _wrapper(self, function: Callable, obj: Any, *args, **kwargs):
-        """
-        :param _:  @ignored - Decorated test suite function -
-        :param obj: Class instance of which the decorated function contained in it
-        :param args: Arguments passed to the function
-        :param kwargs: Arguments passed to the function
-        :return: function results
-        """
-        start = time.time()
-        self._case = TestCase(name=self.name, classname=obj.__class__.__name__, category=TestCaseCategories.FUNCTION)
-        try:
-            value = self._execute_function(function, obj, *args, **kwargs)
-        except BaseException as e:
-            failure = CaseFailure(message=str(e), output=traceback.format_exc(), type=e.__class__.__name__)
-            self._case.failures.append(failure)
-            raise
-        finally:
-            self._case.elapsed_sec = time.time() - start
-            self._finalize()
-        return value
+    def _on_exception(self, e: BaseException):
+        failure = CaseFailure(message=str(e), output=traceback.format_exc(), type=e.__class__.__name__)
+        self._case.failures.append(failure)
+        raise
 
-    def __call__(self, function: Callable) -> Callable:
-        """
-        Create a TestCase object for each executed decorated test case function and register it into the relevant
-        JunitTestSuite object.
-        If exception accrues during function execution, the exception is recorded as junit case failure (CaseFailure)
-        and raises it.
-        Execution time is being recorded and saved into the TestCase instance.
-        :param function: Decorated function
-        :return: Wrapped function
-        """
-        self._func = function
-
-        def wrapper(_, obj: Any, *args, **kwargs):
-            return self._wrapper(function, obj, *args, **kwargs)
-
-        return decorator.decorator(wrapper, function)
-
-    def _finalize(self):
+    def _on_wrapper_end(self, *args):
+        self._case.elapsed_sec = time.time() - self._start_time
         JunitTestSuite.register_case(self._case, self.get_suite_key())
         if self._parametrize:
             self._case.name += f'({", ".join([f"{p[0]}={p[1]}" for p in self._parametrize])})'
@@ -99,8 +70,15 @@ class JunitTestCase:
         collect its parameters and record them into the test case.
         :return: Wrapped Suite function instance
         """
-        suite_func = None
         stack_locals = [frame_info.frame.f_locals for frame_info in inspect.stack()]
+        suite_func = self._get_class_suite(stack_locals)
+        if suite_func is None:
+            suite_func = self._get_module_suite(stack_locals)
+        return suite_func
+
+    def _get_class_suite(self, stack_locals: List[Dict[str, Any]]):
+        suite_func = None
+
         for f_locals in [
             stack_local for stack_local in stack_locals if "function" in stack_local and "self" in stack_local
         ]:
@@ -111,7 +89,19 @@ class JunitTestCase:
                                    all(n in s for n in list(inspect.signature(suite_func).parameters.keys()))][0]
 
                 self.__set_parametrize(suite_func, suite_arguments)
-                break
+                return suite_func
+
+        return suite_func
+
+    def _get_module_suite(self, stack_locals: List[Dict[str, Any]]):
+        suite_func = None
+
+        for f_locals in [stack_local for stack_local in stack_locals if
+                         "item" in stack_local and "nextitem" in stack_local and stack_local[
+                             "item"].name == self._func.__name__]:
+            module = f_locals['nextitem'].parent
+            suite_func = getattr(module.obj, f_locals["nextitem"].name).__wrapped__
+            return suite_func
 
         return suite_func
 

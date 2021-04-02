@@ -42,6 +42,7 @@ class TestJunitFixtureTestCase:
         class A:
             def func(self):
                 return self.__class__.__name__
+
         yield A()
 
     @JunitTestSuite(REPORT_DIR)

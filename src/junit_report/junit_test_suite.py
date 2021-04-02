@@ -36,7 +36,7 @@ class JunitTestSuite:
     FAIL_ON_MISSING_SUITE_KEY = "FAIL_ON_MISSING_SUITE"
 
     XML_REPORT_FORMAT = "junit_{suite_name}_report.xml"
-    FAIL_ON_MISSING_SUITE = os.getenv(FAIL_ON_MISSING_SUITE_KEY, 'False').lower() in ['true', '1', 'yes', 'y']
+    FAIL_ON_MISSING_SUITE = os.getenv(FAIL_ON_MISSING_SUITE_KEY, "False").lower() in ["true", "1", "yes", "y"]
 
     def __init__(self, report_dir: Path = None):
         """

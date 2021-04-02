@@ -58,9 +58,7 @@ class JunitTestCase:
         :return: function results
         """
         start = time.time()
-        self._case = TestCase(name=self.name,
-                              classname=obj.__class__.__name__,
-                              category=TestCaseCategories.FUNCTION)
+        self._case = TestCase(name=self.name, classname=obj.__class__.__name__, category=TestCaseCategories.FUNCTION)
         try:
             value = self._execute_function(function, obj, *args, **kwargs)
         except BaseException as e:
@@ -92,7 +90,7 @@ class JunitTestCase:
     def _finalize(self):
         JunitTestSuite.register_case(self._case, self.get_suite_key())
         if self._parametrize:
-            self._case.stdout = ",".join([f"arguments: {p[0]} = {p[1]}" for p in self._parametrize])
+            self._case.name += f'({", ".join([f"{p[0]}={p[1]}" for p in self._parametrize])})'
 
     def get_suite_key(self) -> Callable:
         """
@@ -109,13 +107,20 @@ class JunitTestCase:
             suite = f_locals["self"]
             if isinstance(suite, JunitTestSuite):
                 suite_func = f_locals["function"]
-                if hasattr(suite_func, "pytestmark"):
-                    prams = list()
-                    for i in range(len(suite_func.pytestmark)):
-                        prams.append(
-                            (suite_func.pytestmark[len(suite_func.pytestmark) - i - 1].args[0], f_locals["args"][i])
-                        )
-                    self._parametrize = prams
+                suite_arguments = [s for s in stack_locals if
+                                   all(n in s for n in list(inspect.signature(suite_func).parameters.keys()))][0]
+
+                self.__set_parametrize(suite_func, suite_arguments)
                 break
 
         return suite_func
+
+    def __set_parametrize(self, suite_func, suite_arguments):
+        if hasattr(suite_func, "pytestmark"):
+            prams = list()
+            marks = [m for m in suite_func.pytestmark if m.name == "parametrize"]
+
+            for i in range(len(marks)):
+                arg = marks[len(marks) - i - 1].args[0]
+                prams.append((arg, suite_arguments[arg]))
+            self._parametrize = prams

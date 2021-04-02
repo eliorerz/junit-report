@@ -35,6 +35,15 @@ class TestJunitFixtureTestCase:
         self.other_test_case()
         self.first_test_case()
 
+    @JunitTestSuite(REPORT_DIR)
+    @pytest.mark.parametrize("version", ["5.1", "6.21980874565", 6.5, "some__long_string_that_is_not_a_number"])
+    @pytest.mark.parametrize("letter", ["A", "B", "C"])
+    @pytest.mark.parametrize("none", [None])
+    @pytest.mark.regression1
+    @pytest.mark.sanity
+    def test_suite_fixtures_with_marks(self, other_fixture, version, letter, none):
+        self.other_test_case()
+
     @JunitTestCase()
     def other_test_case(self):
         pass

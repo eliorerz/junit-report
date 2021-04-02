@@ -105,7 +105,8 @@ class JunitFixtureTestCase(JunitTestCase):
         """
         for mark in own_markers:
             if mark.name == "parametrize":
-                marks_count = len(own_markers)
+                marks = [m for m in own_markers if m.name == "parametrize"]
+                marks_count = len(marks)
 
                 params_regex = "-".join(["(.*?)"] * marks_count)
                 args = list(re.compile(r"(.*?)\[{0}]".format(params_regex)).findall(func.name).pop())
@@ -113,7 +114,7 @@ class JunitFixtureTestCase(JunitTestCase):
 
                 params = list()
                 for i in range(marks_count):
-                    params.append((own_markers[i].args[0], args[i]))
+                    params.append((marks[i].args[0], args[i]))
 
                 self._parametrize = params
                 return getattr(func.cls, func_name).__wrapped__

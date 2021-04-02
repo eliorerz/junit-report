@@ -16,7 +16,7 @@ class TestJunitFixtureTestCase:
 
     @pytest.fixture(scope="function")
     @JunitFixtureTestCase()
-    def other_fixture(self):
+    def other_fixture(self, request):
         yield
 
     @JunitTestSuite(REPORT_DIR)

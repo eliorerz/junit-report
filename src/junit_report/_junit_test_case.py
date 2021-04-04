@@ -2,7 +2,7 @@ import inspect
 import time
 import traceback
 from dataclasses import dataclass
-from typing import Any, Callable, List, Tuple, Union, Dict
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 from junit_xml import TestCase
 
@@ -49,8 +49,7 @@ class JunitTestCase(JunitDecorator):
 
     def _on_wrapper_start(self):
         self._start_time = time.time()
-        self._case = TestCase(name=self.name, classname=self._get_class_name(),
-                              category=TestCaseCategories.FUNCTION)
+        self._case = TestCase(name=self.name, classname=self._get_class_name(), category=TestCaseCategories.FUNCTION)
 
     def _on_exception(self, e: BaseException):
         failure = CaseFailure(message=str(e), output=traceback.format_exc(), type=e.__class__.__name__)
@@ -85,8 +84,8 @@ class JunitTestCase(JunitDecorator):
             suite = f_locals["self"]
             if isinstance(suite, JunitTestSuite):
                 suite_func = f_locals["function"]
-                suite_arguments = [s for s in stack_locals if
-                                   all(n in s for n in list(inspect.signature(suite_func).parameters.keys()))][0]
+                stack_keys = list(inspect.signature(suite_func).parameters.keys())
+                suite_arguments = [stack for stack in stack_locals if all(key in stack for key in stack_keys)][0]
 
                 self.__set_parametrize(suite_func, suite_arguments)
                 return suite_func
@@ -96,10 +95,12 @@ class JunitTestCase(JunitDecorator):
     def _get_module_suite(self, stack_locals: List[Dict[str, Any]]):
         suite_func = None
 
-        for f_locals in [stack_local for stack_local in stack_locals if
-                         "item" in stack_local and "nextitem" in stack_local and stack_local[
-                             "item"].name == self._func.__name__]:
-            module = f_locals['nextitem'].parent
+        for f_locals in [
+            stack_local
+            for stack_local in stack_locals
+            if "item" in stack_local and "nextitem" in stack_local and stack_local["item"].name == self._func.__name__
+        ]:
+            module = f_locals["nextitem"].parent
             suite_func = getattr(module.obj, f_locals["nextitem"].name).__wrapped__
             return suite_func
 

@@ -1,4 +1,5 @@
 import inspect
+import re
 from abc import ABC, abstractmethod
 from typing import Callable, Any
 
@@ -27,30 +28,30 @@ class JunitDecorator(ABC):
     def name(self):
         return self._func.__name__
 
-    def _wrapper(self, function: Callable, *args, **kwargs):
+    def _wrapper(self, _function: Callable, *args, **kwargs):
         value = None
 
-        self._on_wrapper_start(*args)
+        self._on_wrapper_start()
         try:
             value = self._execute_wrapped_function(*args, **kwargs)
         except BaseException as e:
             self._on_exception(e)
         finally:
-            self._on_wrapper_end(*args)
+            self._on_wrapper_end()
         return value
 
-    def _get_class_name(self, *args) -> str:
+    def _get_class_name(self) -> str:
         module = inspect.getmodule(self._func)
-        if args:
-            if args[0] and hasattr(args[0], "__class__") and args[0].__class__.__module__ == module.__name__:
-                return args[0].__class__.__name__
-        return module.__name__
+        try:
+            classname, _ = re.compile(r"(\w+)\.(\w+)\sat\s").findall(str(self._func))[0]
+            return classname
+        except IndexError:
+            return module.__name__
 
     @abstractmethod
-    def _on_wrapper_end(self, *args) -> None:
+    def _on_wrapper_end(self) -> None:
         """
         Executed after execution finished (successfully or not)
-        :param args: Arguments passed to the function
         :return: None
         """
 
@@ -78,9 +79,8 @@ class JunitDecorator(ABC):
         """
         raise
 
-    def _on_wrapper_start(self, *args) -> None:
+    def _on_wrapper_start(self) -> None:
         """
         This function executed when wrapper function starts
-        :param args: Args passed to wrapped function
         :return: None
         """

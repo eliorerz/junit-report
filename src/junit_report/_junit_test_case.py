@@ -47,9 +47,9 @@ class JunitTestCase(JunitDecorator):
         if self._func:
             return self._func.__name__
 
-    def _on_wrapper_start(self, *args):
+    def _on_wrapper_start(self):
         self._start_time = time.time()
-        self._case = TestCase(name=self.name, classname=self._get_class_name(*args),
+        self._case = TestCase(name=self.name, classname=self._get_class_name(),
                               category=TestCaseCategories.FUNCTION)
 
     def _on_exception(self, e: BaseException):
@@ -57,7 +57,7 @@ class JunitTestCase(JunitDecorator):
         self._case.failures.append(failure)
         raise
 
-    def _on_wrapper_end(self, *args):
+    def _on_wrapper_end(self):
         self._case.elapsed_sec = time.time() - self._start_time
         JunitTestSuite.register_case(self._case, self.get_suite_key())
         if self._parametrize:

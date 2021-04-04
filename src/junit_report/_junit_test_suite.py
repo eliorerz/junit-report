@@ -52,8 +52,8 @@ class JunitTestSuite(JunitDecorator):
     def _on_call(self):
         self._register()
 
-    def _on_wrapper_end(self, *args):
-        self._collect(self._get_class_name(*args))
+    def _on_wrapper_end(self):
+        self._collect(self._get_class_name())
 
     @classmethod
     def get_report_dir(cls, report_dir: Union[Path, None]) -> Path:

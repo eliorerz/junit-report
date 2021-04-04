@@ -60,10 +60,10 @@ class JunitFixtureTestCase(JunitTestCase):
         collect_all that trigger the suite to collect all cases and export them into xml
         :return: None
         """
-        self._case.category = TestCaseCategories.FIXTURE
+        self.data.case.category = TestCaseCategories.FIXTURE
 
         super(JunitFixtureTestCase, self)._on_wrapper_end()
-        if len(self._case.failures) > 0:
+        if len(self.data.case.failures) > 0:
             JunitTestSuite.collect_all()
 
     def get_suite_key(self) -> Union[Callable, None]:
@@ -87,13 +87,20 @@ class JunitFixtureTestCase(JunitTestCase):
                 if mark_function:
                     return mark_function
 
-            if func.cls and JunitTestSuite.is_suite_exist(getattr(func.cls, func.name).__wrapped__):
+            if func.cls and self._is_suite_exist(func.cls, func.name):
                 return getattr(func.cls, func.name).__wrapped__
 
-            if func.cls is None and JunitTestSuite.is_suite_exist(getattr(func.module, func.name).__wrapped__):
+            if func.cls is None and self._is_suite_exist(func.module, func.name):
                 return getattr(func.module, func.name).__wrapped__
 
         return None
+
+    @classmethod
+    def _is_suite_exist(cls, obj: Union, func_name: str):
+        func = getattr(obj, func_name)
+        if hasattr(func, "__wrapped__"):
+            return JunitTestSuite.is_suite_exist(func.__wrapped__)
+        return False
 
     def _get_mark_function(self, own_markers: List[Mark], func: Function) -> Union[Callable, None]:
         """
@@ -106,22 +113,23 @@ class JunitFixtureTestCase(JunitTestCase):
         :param func: wrapped function contained with pytest Function object
         :return: wrapped function itself
         """
-        for mark in own_markers:
-            if mark.name == "parametrize":
-                marks = [m for m in own_markers if m.name == "parametrize"]
-                marks_count = len(marks)
+        marks = [m for m in own_markers if m.name == "parametrize"]
+        marks_count = len(marks)
 
-                params_regex = "-".join(["(.*?)"] * marks_count)
-                args = list(re.compile(r"(.*?)\[{0}]".format(params_regex)).findall(func.name).pop())
-                func_name = args.pop(0)
+        if marks_count == 0:
+            return None
 
-                params = list()
-                for i in range(marks_count):
-                    params.append((marks[i].args[0], args[i]))
+        params_regex = "-".join(["(.*?)"] * marks_count)
+        args = list(re.compile(r"(.*?)\[{0}]".format(params_regex)).findall(func.name).pop())
+        func_name = args.pop(0)
 
-                self._parametrize = params
-                if func.cls:
-                    return getattr(func.cls, func_name).__wrapped__
-                else:
-                    return getattr(func.module, func_name).__wrapped__
-        return None
+        params = list()
+        for i in range(marks_count):
+            params.append((marks[i].args[0], args[i]))
+
+        # self._parametrize = params
+        self._parametrize = None
+        if func.cls:
+            return getattr(func.cls, func_name).__wrapped__
+        else:
+            return getattr(func.module, func_name).__wrapped__

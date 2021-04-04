@@ -1,4 +1,5 @@
 import io
+import itertools
 import os
 import shutil
 from collections import OrderedDict
@@ -73,8 +74,10 @@ class ExternalBaseTest(BaseTest):
         JunitTestSuite._junit_suites = dict()
 
     @classmethod
-    def get_test_report(cls, suite_name: str) -> OrderedDict:
-        test_report_path = REPORT_DIR.joinpath(JunitTestSuite.XML_REPORT_FORMAT.format(suite_name=suite_name))
+    def get_test_report(cls, suite_name: str, args="") -> OrderedDict:
+        test_report_path = REPORT_DIR.joinpath(
+            JunitTestSuite.XML_REPORT_FORMAT.format(suite_name=suite_name, args=args)
+        )
 
         with open(test_report_path) as f:
             return xmltodict.parse(f.read())
@@ -116,68 +119,119 @@ class _TestExternal(ExternalBaseTest):
             functions_count=2,
         )
 
-    def multiple_fixtures_with_parametrize(
-        self, test_name: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
-    ):
-        parametrize_arg_count = 4
-        case_count = 3
-        fixtures_count = 2
-
-        expected_fixtures_count = fixtures_count * parametrize_arg_count
-        expected_cases_count = case_count * parametrize_arg_count
-
+    def nested_test_case(self, test_name: str, exec_type: str, first_suite_name: str, second_suite_name: str):
         exit_code, _ = self.execute_test(test_name)
-        assert exit_code == ExitCode.OK
+        assert exit_code == ExitCode.TESTS_FAILED
         xml_results = self.get_test_report(suite_name=first_suite_name)
-        self.assert_xml_report_results_with_cases(
+
+        cases = self.assert_xml_report_results_with_cases(
             xml_results,
-            testsuite_tests=expected_fixtures_count + expected_cases_count,
+            testsuite_tests=4,
             testsuite_name=first_suite_name,
-            fixtures_count=expected_fixtures_count,
-            functions_count=expected_cases_count,
+            fixtures_count=1,
+            functions_count=3,
         )
 
-        first_mark_count = 4
-        second_mark_count = 3
-        third_mark_count = 4
-        fourth_mark_count = 1
-        permutations_count = first_mark_count * second_mark_count * third_mark_count * fourth_mark_count
-        fixtures_count = 2
-        cases_count = 2
-        expected_cases_count = permutations_count * (fixtures_count + cases_count)
+        nested_test_case = [c for c in cases if c["@name"] == "get_my_fixture"].pop()
+        assert (
+            nested_test_case["@classname"]
+            == f"tests.external_tests.{exec_type}_tests._test_junit_report_nested_test_case"
+        )
 
         xml_results = self.get_test_report(suite_name=second_suite_name)
         cases = self.assert_xml_report_results_with_cases(
             xml_results,
-            testsuite_tests=expected_cases_count,
+            testsuite_tests=3,
+            failures=1,
             testsuite_name=second_suite_name,
-            fixtures_count=fixtures_count * permutations_count,
-            functions_count=cases_count * permutations_count,
+            fixtures_count=1,
+            functions_count=2,
         )
 
-        # Verify that each case name have the represented values on its name
-        for c in cases:
-            assert "none=None" in c["@name"]
-            assert "animal=" in c["@name"]
-            assert "letter=" in c["@name"]
-            assert "version=" in c["@name"]
+        nested_test_case = [c for c in cases if c["@name"] == "get_my_fixture"].pop()
+        assert (
+            nested_test_case["@classname"]
+            == f"tests.external_tests.{exec_type}_tests._test_junit_report_nested_test_case"
+        )
+        assert "KeyError: 'Invalid fixture'" in nested_test_case["failure"]["#text"]
 
-        first_parametrize_count = 4
-        second_parametrize_count = 3
-        third_parametrize_count = 1
-        permutations_count = first_parametrize_count * second_parametrize_count * third_parametrize_count
+    def multiple_fixtures_with_parametrize(
+        self, test_name: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
+    ):
+        version = {"version": ["5.1", "6.21980874565", 6.5, "some__long_string_that_is_not_a_number"]}
+        letter = {"letter": ["A", "B", "C"]}
+        animal = {"animal": ["Dog", "Cat", "Horse", "Kangaroo"]}
+        none = {"none": [None]}
+
+        first_args = dict(**version)
+        second_args = dict(**version, **letter, **animal, **none)
+        third_args = dict(**version, **letter, **none)
+
+        case_count = 3
+        fixtures_count = 2
+
+        expected_fixtures_count = fixtures_count
+        expected_cases_count = case_count
+
+        exit_code, _ = self.execute_test(test_name)
+        assert exit_code == ExitCode.OK
+
+        parametrize = list()
+        for k, lst in first_args.items():
+            for v in lst:
+                parametrize.append((k, v))
+
+        for tup in parametrize:
+            xml_results = self.get_test_report(suite_name=first_suite_name, args=str(tup[1]))
+            self.assert_xml_report_results_with_cases(
+                xml_results,
+                testsuite_tests=expected_fixtures_count + expected_cases_count,
+                testsuite_name=first_suite_name,
+                fixtures_count=expected_fixtures_count,
+                functions_count=expected_cases_count,
+            )
+
+        fixtures_count = 2
+        cases_count = 2
+
+        second_args = dict(sorted(second_args.items(), key=lambda x: x[0]))
+        parametrize = [list(k) for k in list(itertools.product(*[v for v in second_args.values()]))]
+        for k in parametrize:
+            k = [str(i) for i in k]
+            xml_results = self.get_test_report(suite_name=second_suite_name, args="_".join(k))
+            cases = self.assert_xml_report_results_with_cases(
+                xml_results,
+                testsuite_tests=fixtures_count + cases_count,
+                testsuite_name=second_suite_name,
+                fixtures_count=fixtures_count,
+                functions_count=cases_count,
+            )
+
+            # Verify that each case name have the represented values on its name
+            for c in cases:
+                if c["@class"] == TestCaseCategories.FUNCTION:
+                    assert "animal=" in c["@name"] and k[0] in c["@name"]
+                    assert "letter=" in c["@name"] and k[1] in c["@name"]
+                    assert "none=None" in c["@name"]
+                    assert "version=" in c["@name"] and k[2] in c["@name"]
+
         fixtures_count = 1
         cases_count = 1
-        expected_cases_count = permutations_count * (fixtures_count + cases_count)
+        expected_cases_count = fixtures_count + cases_count
 
-        xml_results = self.get_test_report(suite_name=third_suite_name)
-        self.assert_xml_report_results_with_cases(
-            xml_results,
-            testsuite_tests=expected_cases_count,
-            testsuite_name=third_suite_name,
-            fixtures_count=fixtures_count * permutations_count,
-            functions_count=cases_count * permutations_count,
-        )
+        third_args = dict(sorted(third_args.items(), key=lambda x: x[0]))
+        parametrize = [list(k) for k in list(itertools.product(*[v for v in third_args.values()]))]
+        for k in parametrize:
+            k = [str(i) for i in k]
+
+            xml_results = self.get_test_report(suite_name=third_suite_name, args="_".join(k))
+            self.assert_xml_report_results_with_cases(
+                xml_results,
+                testsuite_tests=expected_cases_count,
+                testsuite_name=third_suite_name,
+                fixtures_count=fixtures_count,
+                functions_count=cases_count,
+            )
 
     @pytest.fixture
     def files_cleaner(self):
@@ -240,17 +294,12 @@ class _TestExternal(ExternalBaseTest):
             functions_count=expected_case_count,
         )
 
-        expected_parametrize_fixture_failures = 1
-        expected_parametrize_fixture_count = 2
-        expected_parametrize_test_cases = 0
-        expected_parametrize_count = 10
-
         xml_results = self.get_test_report(suite_name=second_suite_name)
         self.assert_xml_report_results_with_cases(
             xml_results,
-            failures=expected_parametrize_fixture_failures * expected_parametrize_count,
-            testsuite_tests=(expected_parametrize_fixture_count * expected_parametrize_count),
+            failures=expected_failures,
+            testsuite_tests=expected_fixtures_count,
             testsuite_name=second_suite_name,
-            fixtures_count=expected_parametrize_fixture_count * expected_parametrize_count,
-            functions_count=expected_parametrize_test_cases,
+            fixtures_count=expected_fixtures_count,
+            functions_count=expected_case_count,
         )

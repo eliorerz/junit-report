@@ -27,10 +27,10 @@ class JunitDecorator(ABC):
     def name(self):
         return self._func.__name__
 
-    def _wrapper(self, _function: Callable, *args, **kwargs):
+    def _wrapper(self, function: Callable, *args, **kwargs):
         value = None
 
-        self._on_wrapper_start()
+        self._on_wrapper_start(function)
         try:
             value = self._execute_wrapped_function(*args, **kwargs)
         except BaseException as e:
@@ -78,7 +78,7 @@ class JunitDecorator(ABC):
         """
         raise
 
-    def _on_wrapper_start(self) -> None:
+    def _on_wrapper_start(self, function) -> None:
         """
         This function executed when wrapper function starts
         :return: None

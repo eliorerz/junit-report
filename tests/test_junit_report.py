@@ -3,9 +3,8 @@ import shutil
 import pytest
 import xmltodict
 
-from src.junit_report import JunitTestCase, JunitTestSuite, SuiteNotExistError
-from src.junit_report import CaseFailure
-from tests import BaseTest, REPORT_DIR
+from src.junit_report import CaseFailure, JunitTestCase, JunitTestSuite, SuiteNotExistError
+from tests import REPORT_DIR, BaseTest
 
 
 class TestJunitReport(BaseTest):

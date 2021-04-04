@@ -1,10 +1,7 @@
-from pathlib import Path
-
 import pytest
 
-from src.junit_report import JunitTestSuite, JunitFixtureTestCase
-
-REPORT_DIR = Path.cwd().joinpath(".reports")
+from src.junit_report import JunitFixtureTestCase, JunitTestSuite
+from tests import REPORT_DIR
 
 
 class TestJunitFixtureTestCase:

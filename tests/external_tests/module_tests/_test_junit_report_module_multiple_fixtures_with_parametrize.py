@@ -1,10 +1,7 @@
-from pathlib import Path
-
 import pytest
 
-from src.junit_report import JunitTestCase, JunitTestSuite, JunitFixtureTestCase
-
-REPORT_DIR = Path.cwd().joinpath(".reports")
+from src.junit_report import JunitFixtureTestCase, JunitTestCase, JunitTestSuite
+from tests import REPORT_DIR
 
 
 @pytest.fixture(scope="function")

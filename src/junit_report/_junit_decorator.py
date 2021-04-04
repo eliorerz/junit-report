@@ -1,13 +1,12 @@
 import inspect
 import re
 from abc import ABC, abstractmethod
-from typing import Callable, Any
+from typing import Any, Callable
 
 import decorator
 
 
 class JunitDecorator(ABC):
-
     def __init__(self) -> None:
         self._func = None
 

@@ -1,13 +1,12 @@
+import os
 from pathlib import Path
 
 from src.junit_report import JunitTestSuite
-
-REPORT_DIR = Path.cwd().joinpath(".reports")
+from tests import REPORT_DIR
 
 
 class TestJunitReport:
     def test_report_path_env_var(self):
-        import os
 
         expected_with_none = REPORT_DIR.joinpath("new")
         os.environ["JUNIT_REPORT_DIR"] = str(expected_with_none)

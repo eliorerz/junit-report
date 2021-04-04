@@ -1,14 +1,11 @@
 import shutil
-from pathlib import Path
 
 import pytest
 import xmltodict
 
 from src.junit_report import JunitTestCase, JunitTestSuite, SuiteNotExistError
-from src.junit_report.junit_test_case import CaseFailure
-from tests import BaseTest
-
-REPORT_DIR = Path.cwd().joinpath(".reports")
+from src.junit_report import CaseFailure
+from tests import BaseTest, REPORT_DIR
 
 
 class TestJunitReport(BaseTest):

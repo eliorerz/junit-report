@@ -2,8 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from src.junit_report import JunitTestSuite
-from src.junit_report.junit_fixture_test_case import JunitFixtureTestCase
+from src.junit_report import JunitTestSuite, JunitFixtureTestCase
 
 REPORT_DIR = Path.cwd().joinpath(".reports")
 

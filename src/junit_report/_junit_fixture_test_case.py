@@ -1,13 +1,13 @@
 import inspect
 import re
-from typing import Any, Callable, List, Union
+from typing import Callable, List, Union
 
 import decorator
 from _pytest.mark import Mark
 from _pytest.python import Function
 
-from .junit_test_case import JunitTestCase, TestCaseCategories
-from .junit_test_suite import JunitTestSuite
+from ._junit_test_case import JunitTestCase, TestCaseCategories
+from ._junit_test_suite import JunitTestSuite
 
 
 class JunitFixtureTestCase(JunitTestCase):
@@ -27,8 +27,8 @@ class JunitFixtureTestCase(JunitTestCase):
     def __call__(self, function: Callable) -> Callable:
         self._func = function
 
-        def wrapper(_, obj: Any, *args, **kwargs):
-            value = self._wrapper(function, obj, *args, **kwargs)
+        def wrapper(_, *args, **kwargs):
+            value = self._wrapper(function, *args, **kwargs)
             yield value
             if self._generator:
                 self._teardown_yield_fixture(self._generator)
@@ -45,15 +45,15 @@ class JunitFixtureTestCase(JunitTestCase):
         except (StopIteration, ValueError, TypeError):
             pass
 
-    def _execute_function(self, function: Callable, obj: Any, *args, **kwargs):
-        generator = function(obj, *args, **kwargs)
+    def _execute_wrapped_function(self, *args, **kwargs):
+        generator = super()._execute_wrapped_function(*args, **kwargs)
         try:
             self._generator = generator
             return next(generator)
         except (StopIteration, TypeError):
             return None
 
-    def _finalize(self):
+    def _on_wrapper_end(self, *args):
         """
         Fixtures executing before the test suite, due to that issue the suite can't collect the fixture case
         if there is an exception during it's execution. If exception occur, it call JunitTestSuite class method
@@ -62,7 +62,7 @@ class JunitFixtureTestCase(JunitTestCase):
         """
         self._case.category = TestCaseCategories.FIXTURE
 
-        super(JunitFixtureTestCase, self)._finalize()
+        super(JunitFixtureTestCase, self)._on_wrapper_end()
         if len(self._case.failures) > 0:
             JunitTestSuite.collect_all()
 
@@ -87,8 +87,11 @@ class JunitFixtureTestCase(JunitTestCase):
                 if mark_function:
                     return mark_function
 
-            if JunitTestSuite.is_suite_exist(getattr(func.cls, func.name).__wrapped__):
+            if func.cls and JunitTestSuite.is_suite_exist(getattr(func.cls, func.name).__wrapped__):
                 return getattr(func.cls, func.name).__wrapped__
+
+            if func.cls is None and JunitTestSuite.is_suite_exist(getattr(func.module, func.name).__wrapped__):
+                return getattr(func.module, func.name).__wrapped__
 
         return None
 
@@ -117,5 +120,8 @@ class JunitFixtureTestCase(JunitTestCase):
                     params.append((marks[i].args[0], args[i]))
 
                 self._parametrize = params
-                return getattr(func.cls, func_name).__wrapped__
+                if func.cls:
+                    return getattr(func.cls, func_name).__wrapped__
+                else:
+                    return getattr(func.module, func_name).__wrapped__
         return None

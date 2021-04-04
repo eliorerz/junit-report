@@ -53,7 +53,7 @@ class JunitFixtureTestCase(JunitTestCase):
         except (StopIteration, TypeError):
             return None
 
-    def _on_wrapper_end(self, *args):
+    def _on_wrapper_end(self):
         """
         Fixtures executing before the test suite, due to that issue the suite can't collect the fixture case
         if there is an exception during it's execution. If exception occur, it call JunitTestSuite class method

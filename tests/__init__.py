@@ -132,11 +132,9 @@ class _TestExternal(ExternalBaseTest):
             functions_count=3,
         )
 
+        expected_nested_test_case = f"tests.external_tests.{exec_type}_tests._test_junit_report_nested_test_case"
         nested_test_case = [c for c in cases if c["@name"] == "get_my_fixture"].pop()
-        assert (
-            nested_test_case["@classname"]
-            == f"tests.external_tests.{exec_type}_tests._test_junit_report_nested_test_case"
-        )
+        assert nested_test_case["@classname"] == expected_nested_test_case
 
         xml_results = self.get_test_report(suite_name=second_suite_name)
         cases = self.assert_xml_report_results_with_cases(
@@ -149,10 +147,8 @@ class _TestExternal(ExternalBaseTest):
         )
 
         nested_test_case = [c for c in cases if c["@name"] == "get_my_fixture"].pop()
-        assert (
-            nested_test_case["@classname"]
-            == f"tests.external_tests.{exec_type}_tests._test_junit_report_nested_test_case"
-        )
+        expected_nested_test_case = f"tests.external_tests.{exec_type}_tests._test_junit_report_nested_test_case"
+        assert nested_test_case["@classname"] == expected_nested_test_case
         assert "KeyError: 'Invalid fixture'" in nested_test_case["failure"]["#text"]
 
     def multiple_fixtures_with_parametrize(

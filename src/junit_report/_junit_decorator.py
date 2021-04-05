@@ -40,6 +40,11 @@ class JunitDecorator(ABC):
         return value
 
     def _get_class_name(self) -> str:
+        """
+        Get class name of which the decorated function contained in it.
+        If class doesn't exists, it returns the module name
+        :return: class or module name
+        """
         module = inspect.getmodule(self._func)
         try:
             classname, _ = re.compile(r"(\w+)\.(\w+)\sat\s").findall(str(self._func))[0]

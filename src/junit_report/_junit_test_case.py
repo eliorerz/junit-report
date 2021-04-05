@@ -53,9 +53,11 @@ class JunitTestCase(JunitDecorator):
     """
 
     _func: Union[Callable, None]
+    _stack_locals: List[Dict[str, Any]]
 
     def __init__(self) -> None:
         super().__init__()
+        self._stack_locals = list()
 
     @property
     def name(self):
@@ -63,6 +65,7 @@ class JunitTestCase(JunitDecorator):
             return self.data.name
 
     def _on_wrapper_start(self, function):
+        self._stack_locals = [frame_info.frame.f_locals for frame_info in inspect.stack()]
         start_time = time.time()
         case = TestCase(name=function.__name__, classname=self._get_class_name(), category=TestCaseCategories.FUNCTION)
         self.data = TestCaseData(start_time=start_time, case=case, func=function)
@@ -85,13 +88,11 @@ class JunitTestCase(JunitDecorator):
         collect its parameters and record them into the test case.
         :return: Wrapped Suite function instance
         """
-        stack_locals = [frame_info.frame.f_locals for frame_info in inspect.stack()]
-        suite_func = self._get_class_suite(stack_locals)
-        if suite_func is None:
-            suite_func = self._get_module_suite(stack_locals)
+        suite_func = self._get_suite(self._stack_locals)
         return suite_func
 
-    def _get_class_suite(self, stack_locals: List[Dict[str, Any]]):
+    def _get_suite(self, stack_locals: List[Dict[str, Any]]):
+        suite_arguments = dict()
         suite_func = None
 
         for f_locals in [
@@ -101,28 +102,23 @@ class JunitTestCase(JunitDecorator):
             if isinstance(suite, JunitTestSuite):
                 suite_func = f_locals["function"]
                 stack_keys = list(inspect.signature(suite_func).parameters.keys())
-                suite_arguments = [stack for stack in stack_locals if all(key in stack for key in stack_keys)][0]
+                for stack in stack_locals:
+                    if all(key in stack for key in stack_keys):
+                        suite_arguments = stack
+                        break
 
                 self.__set_parametrize(suite_func, suite_arguments)
                 return suite_func
 
         return suite_func
 
-    def _get_module_suite(self, stack_locals: List[Dict[str, Any]]):
-        suite_func = None
-
-        for f_locals in [
-            stack_local
-            for stack_local in stack_locals
-            if "item" in stack_local and "nextitem" in stack_local and stack_local["item"].name == self.data.name
-        ]:
-            module = f_locals["nextitem"].parent
-            suite_func = getattr(module.obj, f_locals["nextitem"].name).__wrapped__
-            return suite_func
-
-        return suite_func
-
-    def __set_parametrize(self, suite_func, suite_arguments):
+    def __set_parametrize(self, suite_func: Callable, suite_arguments: Dict[str, Any]):
+        """
+        Grab and set current JunitTestCase parametrize values
+        :param suite_func: Parametrize wrapped suite function
+        :param suite_arguments: Arguments passed to the function
+        :return:
+        """
         if hasattr(suite_func, "pytestmark"):
             prams = list()
             marks = [m for m in suite_func.pytestmark if m.name == "parametrize"]

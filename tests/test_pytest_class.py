@@ -29,8 +29,8 @@ class TestWithPytestDecorators(_TestExternal):
 
     def test_junit_report_fixtures_with_exceptions(self):
         test = "external_tests/class_tests/_test_junit_report_class_with_exceptions.py"
-        first_suite_name = "fixture_test_suite_fixture_throws_exception"
-        second_suite_name = "fixture_test_suite_fixture_with_parametrize_throws_exception"
+        first_suite_name = "TestJunitFixtureTestCase_test_suite_fixture_throws_exception"
+        second_suite_name = "TestJunitFixtureTestCase_test_suite_fixture_with_parametrize_throws_exception"
 
         self.junit_report_fixtures_with_exceptions(test, first_suite_name, second_suite_name)
 

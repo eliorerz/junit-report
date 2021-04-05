@@ -1,4 +1,3 @@
-import inspect
 import re
 from typing import Callable, List, Union
 
@@ -72,11 +71,10 @@ class JunitFixtureTestCase(JunitTestCase):
         This function handles also on case that the test suite function decorated with pytest.mark.parametrize
         :return: Wrapped Suite function instance
         """
-        stack_locals = [frame_info.frame.f_locals for frame_info in inspect.stack()]
 
         for f_locals in [
             stack_local
-            for stack_local in stack_locals
+            for stack_local in self._stack_locals
             if "self" in stack_local and isinstance(stack_local["self"], Function)
         ]:
             func = f_locals["self"]

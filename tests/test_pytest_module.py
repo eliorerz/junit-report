@@ -42,9 +42,13 @@ class TestPytestModule(_TestExternal):
         self.junit_report_fixture_yield_none(test, expected_suite_name)
 
     def test_module_fixtures_with_exceptions(self):
-        test = "external_tests/module_tests/_test_junit_report_module_fixtures_with_exceptions.py"
-        first_suite_name = "fixture_test_suite_fixture_throws_exception"
-        second_suite_name = "fixture_test_suite_fixture_with_parametrize_throws_exception"
+        pkg = "_test_junit_report_module_fixtures_with_exceptions"
+        test = f"external_tests/module_tests/{pkg}.py"
+
+        first_suite_name = f"tests.external_tests.module_tests.{pkg}_test_suite_fixture_throws_exception"
+        second_suite_name = (
+            f"tests.external_tests.module_tests.{pkg}_test_suite_fixture_with_parametrize_throws_exception"
+        )
         self.junit_report_fixtures_with_exceptions(test, first_suite_name, second_suite_name)
 
     def test_nested_test_case(self):

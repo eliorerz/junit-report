@@ -30,8 +30,14 @@ class TestSomeThing:
     @pytest.fixture
     @JunitFixtureTestCase()
     def my_fixture(self):
-        pass
-    
+        # do stuff ..
+        
+        @JunitTestCase()
+        def nested_case():
+          pass
+        
+        yield nested_case
+        
     @JunitTestCase()
     def my_first_test_case(self):
         pass
@@ -42,7 +48,8 @@ class TestSomeThing:
     
     @JunitTestSuite()
     def test_suite(self, my_fixture):
-        self.my_first_test_case()    
+        my_fixture()
+        self.my_first_test_case()
         self.my_second_test_case("John")
 
 ```
@@ -51,13 +58,13 @@ class TestSomeThing:
 ### Output
 ```xml
 <?xml version="1.0" ?>
-<?xml version="1.0" ?>
-<testsuites disabled="0" errors="0" failures="1" tests="3" time="8.893013000488281e-05">
-	<testsuite disabled="0" errors="0" failures="1" name="TestSomeThing_test_suite" skipped="0" tests="3" time="8.893013000488281e-05">
-		<testcase name="my_fixture" time="0.000010" classname="TestSomeThing" class="fixture"/>
-		<testcase name="my_first_test_case" time="0.000007" classname="TestSomeThing" class="function"/>
-		<testcase name="my_second_test_case" time="0.000071" classname="TestSomeThing" class="function">
-			<failure type="ValueError" message="Invalid name John">Traceback ... ValueError(f&quot;Invalid name {name}&quot;) ValueError: Invalid name John</failure>
+<testsuites disabled="0" errors="0" failures="1" tests="4" time="0.000301361083984375">
+	<testsuite disabled="0" errors="0" failures="1" name="TestSomeThing_test_suite" skipped="0" tests="4" time="0.000301361083984375">
+		<testcase name="my_fixture" time="0.000163" classname="TestSomeThing" class="fixture"/>
+		<testcase name="nested_case" time="0.000034" classname="module_name.test" class="function"/>
+		<testcase name="my_first_test_case" time="0.000017" classname="TestSomeThing" class="function"/>
+		<testcase name="my_second_test_case" time="0.000087" classname="TestSomeThing" class="function">
+			<failure type="ValueError" message="Invalid name John">Traceback (most recent call last): ... ValueError: Invalid name John</failure>
 		</testcase>
 	</testsuite>
 </testsuites>

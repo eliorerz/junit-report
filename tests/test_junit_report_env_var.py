@@ -7,7 +7,6 @@ from tests import REPORT_DIR
 
 class TestJunitReport:
     def test_report_path_env_var(self):
-
         expected_with_none = REPORT_DIR.joinpath("new")
         os.environ["JUNIT_REPORT_DIR"] = str(expected_with_none)
 

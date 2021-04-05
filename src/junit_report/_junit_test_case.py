@@ -20,6 +20,26 @@ class CaseFailure:
         return self.__getattribute__(item)
 
 
+@dataclass
+class TestCaseData:
+    case: Union[TestCase, None]
+    func: Union[Callable, None]
+    start_time: float
+    parametrize: Union[None, List[Tuple[str, Any]]] = None
+
+    @property
+    def name(self):
+        return self.func.__name__
+
+    def set_fin_time(self):
+        self.case.elapsed_sec = time.time() - self.start_time
+
+    def get_case_key(self):
+        if self.parametrize:
+            return tuple(sorted(self.parametrize))
+        return ()
+
+
 class TestCaseCategories:
     FUNCTION = "function"
     FIXTURE = "fixture"
@@ -33,34 +53,30 @@ class JunitTestCase(JunitDecorator):
     """
 
     _func: Union[Callable, None]
-    _case: Union[TestCase, None]
-    _parametrize: Union[None, List[Tuple[str, Any]]]
 
     def __init__(self) -> None:
         super().__init__()
-        self._case = None
-        self._start_time = None
-        self._parametrize = None
 
     @property
     def name(self):
         if self._func:
-            return self._func.__name__
+            return self.data.name
 
-    def _on_wrapper_start(self):
-        self._start_time = time.time()
-        self._case = TestCase(name=self.name, classname=self._get_class_name(), category=TestCaseCategories.FUNCTION)
+    def _on_wrapper_start(self, function):
+        start_time = time.time()
+        case = TestCase(name=function.__name__, classname=self._get_class_name(), category=TestCaseCategories.FUNCTION)
+        self.data = TestCaseData(start_time=start_time, case=case, func=function)
 
     def _on_exception(self, e: BaseException):
         failure = CaseFailure(message=str(e), output=traceback.format_exc(), type=e.__class__.__name__)
-        self._case.failures.append(failure)
+        self.data.case.failures.append(failure)
         raise
 
     def _on_wrapper_end(self):
-        self._case.elapsed_sec = time.time() - self._start_time
-        JunitTestSuite.register_case(self._case, self.get_suite_key())
-        if self._parametrize:
-            self._case.name += f'({", ".join([f"{p[0]}={p[1]}" for p in self._parametrize])})'
+        self.data.set_fin_time()
+        JunitTestSuite.register_case(self.data, self.get_suite_key())
+        if self.data.parametrize:
+            self.data.case.name += f'({", ".join([f"{p[0]}={p[1]}" for p in self.data.parametrize])})'
 
     def get_suite_key(self) -> Callable:
         """
@@ -98,7 +114,7 @@ class JunitTestCase(JunitDecorator):
         for f_locals in [
             stack_local
             for stack_local in stack_locals
-            if "item" in stack_local and "nextitem" in stack_local and stack_local["item"].name == self._func.__name__
+            if "item" in stack_local and "nextitem" in stack_local and stack_local["item"].name == self.data.name
         ]:
             module = f_locals["nextitem"].parent
             suite_func = getattr(module.obj, f_locals["nextitem"].name).__wrapped__
@@ -114,4 +130,4 @@ class JunitTestCase(JunitDecorator):
             for i in range(len(marks)):
                 arg = marks[len(marks) - i - 1].args[0]
                 prams.append((arg, suite_arguments[arg]))
-            self._parametrize = prams
+            self.data.parametrize = prams

@@ -5,6 +5,7 @@ class TestWithPytestDecorators(_TestExternal):
     def test_base_flow(self):
         test = "external_tests/class_tests/_test_junit_report_class_fixtures_base_flow.py"
         expected_suite_name = "TestJunitFixtureTestCase_test_suite_one_fixture"
+
         self.base_flow(test, expected_suite_name)
 
     def test_multiple_fixtures(self):
@@ -32,3 +33,10 @@ class TestWithPytestDecorators(_TestExternal):
         second_suite_name = "fixture_test_suite_fixture_with_parametrize_throws_exception"
 
         self.junit_report_fixtures_with_exceptions(test, first_suite_name, second_suite_name)
+
+    def test_nested_test_case(self):
+        test = "external_tests/class_tests/_test_junit_report_nested_test_case.py"
+        first_suite_name = "TestJunitNestedTestCase_test_suite_nested_fixture"
+        second_suite_name = "TestJunitNestedTestCase_test_suite_nested_fixture_wrong_type"
+
+        self.nested_test_case(test, "class", first_suite_name, second_suite_name)

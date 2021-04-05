@@ -198,7 +198,7 @@ class TestJunitReport(BaseTest):
         class ClassA:
             @JunitTestSuite(REPORT_DIR)
             def test_suite(self):
-                pass
+                self.test_case()
 
             @JunitTestCase()
             def test_case(self):
@@ -207,7 +207,7 @@ class TestJunitReport(BaseTest):
         class ClassB:
             @JunitTestSuite(REPORT_DIR)
             def test_suite(self):
-                pass
+                self.test_case()
 
             @JunitTestCase()
             def test_case(self):

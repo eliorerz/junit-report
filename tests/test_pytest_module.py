@@ -30,6 +30,7 @@ class TestPytestModule(_TestExternal):
             "tests.external_tests.module_tests._test_junit_report_module_multiple_fixtures_with_parametrize_"
             "test_suite_fixtures_with_marks"
         )
+
         self.multiple_fixtures_with_parametrize(test, first_suite_name, second_suite_name, third_suite_name)
 
     def test_module_junit_report_fixture_yield_none(self, files_cleaner):
@@ -45,3 +46,14 @@ class TestPytestModule(_TestExternal):
         first_suite_name = "fixture_test_suite_fixture_throws_exception"
         second_suite_name = "fixture_test_suite_fixture_with_parametrize_throws_exception"
         self.junit_report_fixtures_with_exceptions(test, first_suite_name, second_suite_name)
+
+    def test_nested_test_case(self):
+        test = "external_tests/module_tests/_test_junit_report_nested_test_case.py"
+        first_suite_name = (
+            "tests.external_tests.module_tests._test_junit_report_nested_test_case_test_suite_nested_fixture"
+        )
+        second_suite_name = (
+            "tests.external_tests.module_tests._test_junit_report_nested_test_case_test_suite_nested_fixture_wrong_type"
+        )
+
+        self.nested_test_case(test, "module", first_suite_name, second_suite_name)

@@ -2,7 +2,7 @@ name: PR - Unit Tests
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, development ]
 
 jobs:
   build:

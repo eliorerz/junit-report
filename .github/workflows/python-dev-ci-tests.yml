@@ -1,8 +1,8 @@
-name: CI - Unit Tests
+name: Dev CI - Unit Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ development ]
 
 jobs:
   build:

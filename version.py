@@ -1,3 +1,4 @@
+import argparse
 import re
 import subprocess
 from typing import List, Tuple
@@ -64,9 +65,9 @@ class GitVersion:
             pass
 
     @classmethod
-    def main(cls):
+    def main(cls, branch: str):
         print("Starting versioning process...")
-        branch_name = cls.get_branch()
+        branch_name = branch if branch else cls.get_branch()
         if branch_name not in cls.ALLOWED_BRANCHES and not branch_name.startswith("release"):
             print("Tag occur only on release or main branch")
             return
@@ -80,4 +81,8 @@ class GitVersion:
 
 
 if __name__ == "__main__":
-    GitVersion.main()
+    parser = argparse.ArgumentParser("Version script")
+    parser.add_argument("-b", "--branch", help="Branch name", type=str, default=None)
+    args = parser.parse_args()
+
+    GitVersion.main(args.branch)

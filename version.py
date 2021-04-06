@@ -5,6 +5,9 @@ from typing import List, Tuple
 
 class GitVersion:
     CI_FLAG = "[CI]"
+    BRANCH_MAIN = "main"
+    BRANCH_DEV = "development"
+    ALLOWED_BRANCHES = BRANCH_MAIN, BRANCH_DEV
 
     @classmethod
     def sys_exec(cls, cmd: List[str]) -> None or str:
@@ -16,6 +19,9 @@ class GitVersion:
 
     @classmethod
     def tag(cls, version: str):
+        if version is None:
+            return
+
         print(f"Adding new tag {version}")
         cls.sys_exec(f"git tag -a {version} -m ".split() + [" '{cls.CI_FLAG} - Version {version}'"])
         cls.sys_exec("git push origin --tags".split())
@@ -36,9 +42,12 @@ class GitVersion:
     @classmethod
     def increment_version(cls, branch_name: str):
         major, minor, patch = cls.get_version()
-        if branch_name == "main":
+        if branch_name == cls.BRANCH_MAIN:
             updated_patch = str(int(patch) + 1)
             updated_minor = minor
+        elif branch_name == cls.BRANCH_DEV:
+            print("Development branch - auto increment build number.")
+            return None
         else:
             updated_patch = 0
             updated_minor = str(int(minor) + 1)
@@ -58,7 +67,7 @@ class GitVersion:
     def main(cls):
         print("Starting versioning process...")
         branch_name = cls.get_branch()
-        if branch_name != "main" and not branch_name.startswith("release"):
+        if branch_name not in cls.ALLOWED_BRANCHES and not branch_name.startswith("release"):
             print("Tag occur only on release or main branch")
             return
 

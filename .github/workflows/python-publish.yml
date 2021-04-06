@@ -33,4 +33,4 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        tox -e release
+        if [ ${{ github.ref }} == 'ref/head/development' ]; then TWINE_REPOSITORY=testpypi tox -e release; else tox -e release; fi

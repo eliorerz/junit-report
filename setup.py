@@ -21,7 +21,7 @@ setuptools.setup(
     name="junit-report",
     setup_requires=["vcversioner"],
     vcversioner={"vcs_args": ["git", "describe", "--tags", "--long"]},
-    description="",
+    description="Export your test suites and cases to JUnit report using decorators",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/eliorerz/junit-report",

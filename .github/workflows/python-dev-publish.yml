@@ -2,7 +2,7 @@ name: Dev CI - Upload Python Package
 
 on:
   workflow_run:
-    workflows: ["CI - Unit Tests"]
+    workflows: ["Dev CI - Unit Tests"]
     types:
       - completed
 

@@ -1,4 +1,4 @@
-name: CI - Upload Python Package
+name: Dev CI - Upload Python Package
 
 on:
   workflow_run:
@@ -26,11 +26,11 @@ jobs:
       run: |
         git config --global user.email "you@example.com"
         git config --global user.name "Elior Erez"
-        python version.py
+        python version.py -b development
 
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        tox -e release
+        TWINE_REPOSITORY=testpypi tox -e release

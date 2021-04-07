@@ -1,4 +1,5 @@
 import re
+from types import GeneratorType
 from typing import Callable, List, Union
 
 import decorator
@@ -19,6 +20,10 @@ class JunitFixtureTestCase(JunitTestCase):
             ...
     """
 
+    _generator: Union[GeneratorType, None]
+
+    AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX = "[TEARDOWN EXCEPTION]"
+
     def __init__(self) -> None:
         super().__init__()
         self._generator = None
@@ -29,8 +34,14 @@ class JunitFixtureTestCase(JunitTestCase):
         def wrapper(_, *args, **kwargs):
             value = self._wrapper(function, *args, **kwargs)
             yield value
-            if self._generator:
-                self._teardown_yield_fixture(self._generator)
+            try:
+                if self._generator:
+                    self._teardown_yield_fixture(self._generator)
+            except BaseException as e:
+                self._add_failure(e, self.AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX)
+                raise
+            finally:
+                JunitTestSuite.fixture_cleanup(self._data, self.get_suite_key())
 
         return decorator.decorator(wrapper, function)
 
@@ -41,7 +52,7 @@ class JunitFixtureTestCase(JunitTestCase):
         more than one yield in the function)."""
         try:
             next(it)
-        except (StopIteration, ValueError, TypeError):
+        except StopIteration:
             pass
 
     def _execute_wrapped_function(self, *args, **kwargs):
@@ -59,10 +70,10 @@ class JunitFixtureTestCase(JunitTestCase):
         collect_all that trigger the suite to collect all cases and export them into xml
         :return: None
         """
-        self.data.case.category = TestCaseCategories.FIXTURE
+        self._data.case.category = TestCaseCategories.FIXTURE
 
         super(JunitFixtureTestCase, self)._on_wrapper_end()
-        if len(self.data.case.failures) > 0:
+        if len(self._data.case.failures) > 0:
             JunitTestSuite.collect_all()
 
     def get_suite_key(self) -> Union[Callable, None]:
@@ -125,7 +136,6 @@ class JunitFixtureTestCase(JunitTestCase):
         for i in range(marks_count):
             params.append((marks[i].args[0], args[i]))
 
-        # self._parametrize = params
         self._parametrize = None
         if func.cls:
             return getattr(func.cls, func_name).__wrapped__

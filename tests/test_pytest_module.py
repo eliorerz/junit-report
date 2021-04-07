@@ -61,3 +61,12 @@ class TestPytestModule(_TestExternal):
         )
 
         self.nested_test_case(test, "module", first_suite_name, second_suite_name)
+
+    def test_fixture_raise_exception_after_yield(self):
+        test = "external_tests/module_tests/_test_junit_report_fixture_raise_exception_after_yield.py"
+        first_suite_name = (
+            "tests.external_tests.module_tests._test_junit_report_fixture_raise_exception_after_yield"
+            "_test_suite_fixture_raise_exception_after_yield"
+        )
+
+        self.fixture_raise_exception_after_yield(test, first_suite_name)

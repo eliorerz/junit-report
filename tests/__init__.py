@@ -11,7 +11,7 @@ import pytest
 import xmltodict
 from _pytest.config import ExitCode
 
-from src.junit_report import JunitTestSuite, TestCaseCategories
+from src.junit_report import JunitFixtureTestCase, JunitTestSuite, TestCaseCategories
 
 try:
     os.chdir(Path().cwd().joinpath("tests"))
@@ -299,3 +299,31 @@ class _TestExternal(ExternalBaseTest):
             fixtures_count=expected_fixtures_count,
             functions_count=expected_case_count,
         )
+
+    def fixture_raise_exception_after_yield(self, test_name: str, expected_suite_name: str):
+        expected_case_count = 2
+        expected_fixtures_count = 2
+        expected_failures = 1
+
+        exit_code, _ = self.execute_test(test_name)
+        assert exit_code == ExitCode.TESTS_FAILED
+        xml_results = self.get_test_report(suite_name=expected_suite_name)
+        cases = self.assert_xml_report_results_with_cases(
+            xml_results,
+            failures=expected_failures,
+            testsuite_tests=expected_fixtures_count + expected_case_count,
+            testsuite_name=expected_suite_name,
+            fixtures_count=expected_fixtures_count,
+            functions_count=expected_case_count,
+        )
+
+        expected_fixture_name = "fixture_with_exception_after_yield"
+        assert len([c for c in cases if c["@name"] == expected_fixture_name]) == 1
+
+        failed_cases = [c for c in cases if "failure" in c]
+        assert len(failed_cases) == 1
+
+        failed_case = failed_cases[0]
+        assert failed_case["@name"] == expected_fixture_name
+        assert failed_case["failure"]["@type"] == ValueError.__name__
+        assert failed_case["failure"]["@message"].startswith(JunitFixtureTestCase.AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX)

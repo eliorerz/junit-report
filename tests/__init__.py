@@ -75,18 +75,21 @@ class ExternalBaseTest(BaseTest):
 
     @classmethod
     def get_test_report(cls, suite_name: str, args="") -> OrderedDict:
-        test_report_path = REPORT_DIR.joinpath(
-            JunitTestSuite.XML_REPORT_FORMAT.format(suite_name=suite_name, args=args)
-        )
+        if not suite_name.endswith(".xml"):
+            test_report_path = REPORT_DIR.joinpath(
+                JunitTestSuite.XML_REPORT_FORMAT.format(suite_name=suite_name, args=args)
+            )
+        else:
+            test_report_path = REPORT_DIR.joinpath(suite_name)
 
         with open(test_report_path) as f:
             return xmltodict.parse(f.read())
 
     @classmethod
-    def execute_test(cls, testfile: str) -> Tuple[ExitCode, str]:
+    def execute_test(cls, testfile: str, *args) -> Tuple[ExitCode, str]:
         f = io.StringIO()
         with redirect_stdout(f):
-            exit_code = pytest.main([testfile])
+            exit_code = pytest.main([testfile] + [a for a in args])
 
         return exit_code, f.getvalue()
 
@@ -234,7 +237,22 @@ class _TestExternal(ExternalBaseTest):
         file_before_yield_path = "file_before_yield"
         file_in_case_path = "file_in_case"
         file_after_yield_path = "file_after_yield"
+
+        expected_before_yield = "0"
+        expected_in_case = "1"
+        expected_after_yield = "2"
+
         yield
+
+        with open(file_before_yield_path) as f:
+            assert f.read() == expected_before_yield
+
+        with open(file_in_case_path) as f:
+            assert f.read() == expected_in_case
+
+        with open(file_after_yield_path) as f:
+            assert f.read() == expected_after_yield
+
         os.remove(file_before_yield_path)
         os.remove(file_in_case_path)
         os.remove(file_after_yield_path)
@@ -255,23 +273,6 @@ class _TestExternal(ExternalBaseTest):
             fixtures_count=expected_fixtures_count,
             functions_count=expected_case_count,
         )
-
-        expected_before_yield = "0"
-        expected_in_case = "1"
-        expected_after_yield = "2"
-
-        file_before_yield_path = "file_before_yield"
-        file_in_case_path = "file_in_case"
-        file_after_yield_path = "file_after_yield"
-
-        with open(file_before_yield_path) as f:
-            assert f.read() == expected_before_yield
-
-        with open(file_in_case_path) as f:
-            assert f.read() == expected_in_case
-
-        with open(file_after_yield_path) as f:
-            assert f.read() == expected_after_yield
 
     def junit_report_fixtures_with_exceptions(self, test_name: str, first_suite_name: str, second_suite_name: str):
         expected_case_count = 0
@@ -327,3 +328,15 @@ class _TestExternal(ExternalBaseTest):
         assert failed_case["@name"] == expected_fixture_name
         assert failed_case["failure"]["@type"] == ValueError.__name__
         assert failed_case["failure"]["@message"].startswith(JunitFixtureTestCase.AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX)
+
+    def pytest_suite_no_junit_suite(self, test_name: str, report_name: str):
+        parametrize_count = 5
+
+        exit_code, _ = self.execute_test(test_name, f"--junit-xml={REPORT_DIR.joinpath('unittest.xml')}")
+        assert exit_code == ExitCode.OK
+
+        xml_results = self.get_test_report(suite_name=report_name)
+        assert xml_results["testsuites"]["testsuite"]["@name"] == "pytest"
+        assert int(xml_results["testsuites"]["testsuite"]["@tests"]) == 1 + parametrize_count
+        assert int(xml_results["testsuites"]["testsuite"]["@failures"]) == 0
+        assert int(xml_results["testsuites"]["testsuite"]["@errors"]) == 0

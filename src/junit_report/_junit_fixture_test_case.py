@@ -76,7 +76,7 @@ class JunitFixtureTestCase(JunitTestCase):
         if len(self._data.case.failures) > 0:
             JunitTestSuite.collect_all()
 
-    def get_suite_key(self) -> Union[Callable, None]:
+    def _get_suite(self) -> Union[Callable, None]:
         """
         Get suite function as unique key.
         This function handles also on case that the test suite function decorated with pytest.mark.parametrize
@@ -90,17 +90,20 @@ class JunitFixtureTestCase(JunitTestCase):
         ]:
             func = f_locals["self"]
 
-            # if pytest.mark.parametrize exist, get actual function from class while ignoring the add parameters
-            if hasattr(func, "own_markers") and len(func.own_markers) > 0:
-                mark_function = self._get_mark_function(func.own_markers, func)
-                if mark_function:
-                    return mark_function
+            try:
+                # if pytest.mark.parametrize exist, get actual function from class while ignoring the add parameters
+                if hasattr(func, "own_markers") and len(func.own_markers) > 0:
+                    mark_function = self._get_mark_function(func.own_markers, func)
+                    if mark_function:
+                        return mark_function
 
-            if func.cls and self._is_suite_exist(func.cls, func.name):
-                return getattr(func.cls, func.name).__wrapped__
+                if func.cls and self._is_suite_exist(func.cls, func.name):
+                    return getattr(func.cls, func.name).__wrapped__
 
-            if func.cls is None and self._is_suite_exist(func.module, func.name):
-                return getattr(func.module, func.name).__wrapped__
+                if func.cls is None and self._is_suite_exist(func.module, func.name):
+                    return getattr(func.module, func.name).__wrapped__
+            except AttributeError:
+                pass
 
         return None
 
@@ -136,7 +139,6 @@ class JunitFixtureTestCase(JunitTestCase):
         for i in range(marks_count):
             params.append((marks[i].args[0], args[i]))
 
-        self._parametrize = None
         if func.cls:
             return getattr(func.cls, func_name).__wrapped__
         else:

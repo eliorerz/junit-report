@@ -159,8 +159,6 @@ class TestJunitReport(BaseTest):
         JunitTestSuite.register_case(TestCase("case_name"), some_suite)
 
     def test_register(self):
-        from junit_xml import TestCase
-
         start = len(JunitTestSuite._junit_suites)
 
         @JunitTestSuite()
@@ -176,10 +174,6 @@ class TestJunitReport(BaseTest):
             pass
 
         assert len(JunitTestSuite._junit_suites) == start + 3
-
-        JunitTestSuite.register_case(TestCase("case_name"), suite_name1.__wrapped__)
-        JunitTestSuite.register_case(TestCase("case_name"), suite_name2.__wrapped__)
-        JunitTestSuite.register_case(TestCase("case_name"), suite_name3.__wrapped__)
 
         JunitTestSuite._junit_suites.pop(suite_name1.__wrapped__)
         JunitTestSuite._junit_suites.pop(suite_name2.__wrapped__)

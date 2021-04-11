@@ -1,4 +1,5 @@
 import re
+from types import GeneratorType
 from typing import Callable, List, Union
 
 import decorator
@@ -19,6 +20,10 @@ class JunitFixtureTestCase(JunitTestCase):
             ...
     """
 
+    _generator: Union[GeneratorType, None]
+
+    AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX = "[TEARDOWN EXCEPTION]"
+
     def __init__(self) -> None:
         super().__init__()
         self._generator = None
@@ -29,8 +34,14 @@ class JunitFixtureTestCase(JunitTestCase):
         def wrapper(_, *args, **kwargs):
             value = self._wrapper(function, *args, **kwargs)
             yield value
-            if self._generator:
-                self._teardown_yield_fixture(self._generator)
+            try:
+                if self._generator:
+                    self._teardown_yield_fixture(self._generator)
+            except BaseException as e:
+                self._add_failure(e, self.AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX)
+                raise
+            finally:
+                JunitTestSuite.fixture_cleanup(self._data, self.get_suite_key())
 
         return decorator.decorator(wrapper, function)
 
@@ -41,7 +52,7 @@ class JunitFixtureTestCase(JunitTestCase):
         more than one yield in the function)."""
         try:
             next(it)
-        except (StopIteration, ValueError, TypeError):
+        except StopIteration:
             pass
 
     def _execute_wrapped_function(self, *args, **kwargs):
@@ -59,13 +70,13 @@ class JunitFixtureTestCase(JunitTestCase):
         collect_all that trigger the suite to collect all cases and export them into xml
         :return: None
         """
-        self.data.case.category = TestCaseCategories.FIXTURE
+        self._data.case.category = TestCaseCategories.FIXTURE
 
         super(JunitFixtureTestCase, self)._on_wrapper_end()
-        if len(self.data.case.failures) > 0:
+        if len(self._data.case.failures) > 0:
             JunitTestSuite.collect_all()
 
-    def get_suite_key(self) -> Union[Callable, None]:
+    def _get_suite(self) -> Union[Callable, None]:
         """
         Get suite function as unique key.
         This function handles also on case that the test suite function decorated with pytest.mark.parametrize
@@ -79,17 +90,20 @@ class JunitFixtureTestCase(JunitTestCase):
         ]:
             func = f_locals["self"]
 
-            # if pytest.mark.parametrize exist, get actual function from class while ignoring the add parameters
-            if hasattr(func, "own_markers") and len(func.own_markers) > 0:
-                mark_function = self._get_mark_function(func.own_markers, func)
-                if mark_function:
-                    return mark_function
+            try:
+                # if pytest.mark.parametrize exist, get actual function from class while ignoring the add parameters
+                if hasattr(func, "own_markers") and len(func.own_markers) > 0:
+                    mark_function = self._get_mark_function(func.own_markers, func)
+                    if mark_function:
+                        return mark_function
 
-            if func.cls and self._is_suite_exist(func.cls, func.name):
-                return getattr(func.cls, func.name).__wrapped__
+                if func.cls and self._is_suite_exist(func.cls, func.name):
+                    return getattr(func.cls, func.name).__wrapped__
 
-            if func.cls is None and self._is_suite_exist(func.module, func.name):
-                return getattr(func.module, func.name).__wrapped__
+                if func.cls is None and self._is_suite_exist(func.module, func.name):
+                    return getattr(func.module, func.name).__wrapped__
+            except AttributeError:
+                pass
 
         return None
 
@@ -125,8 +139,6 @@ class JunitFixtureTestCase(JunitTestCase):
         for i in range(marks_count):
             params.append((marks[i].args[0], args[i]))
 
-        # self._parametrize = params
-        self._parametrize = None
         if func.cls:
             return getattr(func.cls, func_name).__wrapped__
         else:

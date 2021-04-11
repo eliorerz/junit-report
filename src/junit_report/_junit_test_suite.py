@@ -27,11 +27,11 @@ class JunitTestSuite(JunitDecorator):
     Default report path can be override if DEFAULT_REPORT_PATH_KEY environment variable is set
     """
 
-    _junit_suites: ClassVar[Dict[Callable, Dict]] = dict()
+    _junit_suites: ClassVar[Dict[Callable, "JunitTestSuite"]] = dict()
     _report_dir: Path
     _cases = List[TestCase]
     _func: Union[Callable, None]
-    _suite: Union[TestSuite, None]
+    suite: Union[TestSuite, None]
 
     DEFAULT_REPORT_PATH_KEY = "JUNIT_REPORT_DIR"
     FAIL_ON_MISSING_SUITE_KEY = "FAIL_ON_MISSING_SUITE"
@@ -46,16 +46,29 @@ class JunitTestSuite(JunitDecorator):
         super().__init__()
         self._report_dir = self.get_report_dir(report_dir)
         self._cases = list()
+        self.suite = None
         self._timestamp = datetime.datetime.now()
+        self._has_uncollected_fixtures = False
 
     def _on_call(self):
         self._register()
 
     def _on_wrapper_end(self):
-        suite = TestSuite(
+        self.suite = TestSuite(
             name=f"{self._get_class_name()}_{self.name}", test_cases=self._get_cases(), timestamp=self._timestamp
         )
-        self._export(suite)
+        self._export(self.suite)
+
+    @classmethod
+    def get_suite(cls, suite_key: Callable) -> Union["JunitTestSuite", None]:
+        """
+        Return suite if exists, None otherwise
+        :param suite_key: Wrapped function as cases key
+        :return:
+        """
+        if cls.is_suite_exist(suite_key):
+            return cls._junit_suites[suite_key]
+        return None
 
     @classmethod
     def get_report_dir(cls, report_dir: Union[Path, None]) -> Path:
@@ -85,7 +98,7 @@ class JunitTestSuite(JunitDecorator):
         :return: None
         """
         if cls.is_suite_exist(suite_func):
-            cls._add_case(cls._junit_suites[suite_func], test_data)
+            cls._add_case(cls.get_suite(suite_func), test_data)
         else:
             if cls.FAIL_ON_MISSING_SUITE:
                 raise SuiteNotExistError(f"Can't find suite named {suite_func} for {test_data} test case")
@@ -99,6 +112,8 @@ class JunitTestSuite(JunitDecorator):
         return [data.case for data in self._cases]
 
     def _add_case(self, test_data):
+        if test_data.case.category == "fixture":
+            self._has_uncollected_fixtures = True
         return self._cases.append(test_data)
 
     def _get_parametrize_values(self) -> str:
@@ -107,8 +122,8 @@ class JunitTestSuite(JunitDecorator):
         :return: underscore separated parametrize values
         """
         values = ""
-        parametrize = [p for p in self._cases if p.parametrize is not None]
-        if parametrize:
+        test_cases = [test_case_data for test_case_data in self._cases if test_case_data.parametrize is not None]
+        if test_cases:
             marks = {c.get_case_key() for c in self._cases if len(c.get_case_key()) > 0}
             if marks:
                 values = "_".join([str(tup[1]) for tup in marks.pop()])
@@ -122,12 +137,41 @@ class JunitTestSuite(JunitDecorator):
         """
         if len(suite.test_cases) == 0:
             return
-        values = self._get_parametrize_values()
-        path = self._report_dir.joinpath(self.XML_REPORT_FORMAT.format(suite_name=suite.name, args=values))
-        xml_string = to_xml_report_string([suite])
 
-        os.makedirs(self._report_dir, exist_ok=True)
-        with open(path, "w") as f:
-            f.write(xml_string)
+        if not self._has_uncollected_fixtures:
+            values = self._get_parametrize_values()
+            path = self._report_dir.joinpath(self.XML_REPORT_FORMAT.format(suite_name=suite.name, args=values))
+            xml_string = to_xml_report_string([suite])
 
+            os.makedirs(self._report_dir, exist_ok=True)
+            with open(path, "w") as f:
+                f.write(xml_string)
+
+            self.clear_cases()
+
+    def clear_cases(self):
+        """ Delete all cases from suite """
         self._cases = list()
+        self.suite.test_cases = list()
+
+    @classmethod
+    def fixture_cleanup(cls, test_data, suite_func: Callable):
+        """
+        Collect junit suite after fixture yield
+        :param test_data: TestCaseData
+        :param suite_func: suite key
+        :return: None
+        """
+        junit_suite = cls.get_suite(suite_func)
+        if junit_suite and junit_suite._cases:
+            first_fixture = junit_suite._cases[0].case
+            if first_fixture == test_data.case:
+                junit_suite._collect_yield()
+
+    def _collect_yield(self):
+        """
+        Export suite if exist
+        :return:
+        """
+        self._has_uncollected_fixtures = False
+        self._export(self.suite)

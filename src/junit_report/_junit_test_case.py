@@ -98,22 +98,27 @@ class JunitTestCase(JunitDecorator):
         self._data.set_fin_time()
         JunitTestSuite.register_case(self._data, self.get_suite_key())
 
-    def get_suite_key(self) -> Callable:
+    def get_suite_key(self) -> Union[Callable, None]:
         """
         Get suite function as unique key.
         This function handles also on case that the test suite function decorated with pytest.mark.parametrize and
         collect its parameters and record them into the test case.
         :return: Wrapped Suite function instance
         """
-        suite_func = self._get_suite(self._stack_locals)
-        return suite_func
+        try:
+            suite_func = self._get_suite()
+            return suite_func
+        except AttributeError:
+            if JunitTestSuite.FAIL_ON_MISSING_SUITE:
+                raise
+        return None
 
-    def _get_suite(self, stack_locals: List[Dict[str, Any]]):
+    def _get_suite(self):
         suite_arguments = dict()
         suite_func = None
 
         for f_locals in [
-            stack_local for stack_local in stack_locals if "function" in stack_local and "self" in stack_local
+            stack_local for stack_local in self._stack_locals if "function" in stack_local and "self" in stack_local
         ]:
             suite = f_locals["self"]
             if isinstance(suite, JunitTestCase) and f_locals["function"].__name__ != self.name:
@@ -123,7 +128,7 @@ class JunitTestCase(JunitDecorator):
             if isinstance(suite, JunitTestSuite):
                 suite_func = f_locals["function"]
                 stack_keys = list(inspect.signature(suite_func).parameters.keys())
-                for stack in stack_locals:
+                for stack in self._stack_locals:
                     if all(key in stack for key in stack_keys):
                         suite_arguments = stack
                         break

@@ -70,3 +70,8 @@ class TestPytestModule(_TestExternal):
         )
 
         self.fixture_raise_exception_after_yield(test, first_suite_name)
+
+    def test_no_suite(self, files_cleaner):
+        test = "external_tests/module_tests/_test_junit_report_test_cases_without_suite.py"
+        report_name = "unittest.xml"
+        self.pytest_suite_no_junit_suite(test, report_name)

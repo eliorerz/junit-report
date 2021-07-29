@@ -60,6 +60,12 @@ class JunitTestSuite(JunitDecorator):
         self._export(self.suite)
 
     @classmethod
+    def get_report_file_name(cls, suite_name: str, args: str = None):
+        if args:
+            return cls.XML_REPORT_FORMAT.format(suite_name=suite_name, args=f"[{args}]")
+        return cls.XML_REPORT_FORMAT.format(suite_name=suite_name, args="")
+
+    @classmethod
     def get_suite(cls, suite_key: Callable) -> Union["JunitTestSuite", None]:
         """
         Return suite if exists, None otherwise
@@ -140,7 +146,7 @@ class JunitTestSuite(JunitDecorator):
 
         if not self._has_uncollected_fixtures:
             values = self._get_parametrize_values()
-            path = self._report_dir.joinpath(self.XML_REPORT_FORMAT.format(suite_name=suite.name, args=values))
+            path = self._report_dir.joinpath(self.get_report_file_name(suite_name=suite.name, args=values))
             xml_string = to_xml_report_string([suite])
 
             os.makedirs(self._report_dir, exist_ok=True)

@@ -88,12 +88,16 @@ class JunitFixtureTestCase(JunitTestCase):
             for stack_local in self._stack_locals
             if "self" in stack_local and isinstance(stack_local["self"], Function)
         ]:
-            func = f_locals["self"]
+            func: Function = f_locals["self"]
 
             try:
                 # if pytest.mark.parametrize exist, get actual function from class while ignoring the add parameters
                 if hasattr(func, "own_markers") and len(func.own_markers) > 0:
                     mark_function = self._get_mark_function(func.own_markers, func)
+                    if func.callspec and func.callspec.params:
+                        if not self._data.parametrize:
+                            self._data.set_parametrize(list(func.callspec.params.items()))
+
                     if mark_function:
                         return mark_function
 

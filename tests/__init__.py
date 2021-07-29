@@ -77,7 +77,7 @@ class ExternalBaseTest(BaseTest):
     def get_test_report(cls, suite_name: str, args="") -> OrderedDict:
         if not suite_name.endswith(".xml"):
             test_report_path = REPORT_DIR.joinpath(
-                JunitTestSuite.XML_REPORT_FORMAT.format(suite_name=suite_name, args=args)
+                JunitTestSuite.get_report_file_name(suite_name=suite_name, args=args)
             )
         else:
             test_report_path = REPORT_DIR.joinpath(suite_name)
@@ -290,16 +290,23 @@ class _TestExternal(ExternalBaseTest):
             fixtures_count=expected_fixtures_count,
             functions_count=expected_case_count,
         )
+        version = {"version": ["5.1", "2.3", "5.01", "1.3.5", "5.1", "2.3", "48.1d", "2.3", 100, "250"]}
+        second_args = dict(**version)
+        parametrize = list()
+        for k, lst in second_args.items():
+            for v in lst:
+                parametrize.append((k, v))
 
-        xml_results = self.get_test_report(suite_name=second_suite_name)
-        self.assert_xml_report_results_with_cases(
-            xml_results,
-            failures=expected_failures,
-            testsuite_tests=expected_fixtures_count,
-            testsuite_name=second_suite_name,
-            fixtures_count=expected_fixtures_count,
-            functions_count=expected_case_count,
-        )
+        for tup in parametrize:
+            xml_results = self.get_test_report(suite_name=second_suite_name, args=str(tup[1]))
+            self.assert_xml_report_results_with_cases(
+                xml_results,
+                failures=expected_failures,
+                testsuite_tests=expected_fixtures_count,
+                testsuite_name=second_suite_name,
+                fixtures_count=expected_fixtures_count,
+                functions_count=expected_case_count,
+            )
 
     def fixture_raise_exception_after_yield(self, test_name: str, expected_suite_name: str):
         expected_case_count = 2

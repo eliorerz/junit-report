@@ -58,6 +58,8 @@ class BaseTest:
         assert testsuite["@name"] == testsuite_name
 
         cases = testsuite["testcase"]
+        if isinstance(cases, OrderedDict):
+            return [cases]
         return cases
 
     @staticmethod
@@ -347,3 +349,29 @@ class _TestExternal(ExternalBaseTest):
         assert int(xml_results["testsuites"]["testsuite"]["@tests"]) == 1 + parametrize_count
         assert int(xml_results["testsuites"]["testsuite"]["@failures"]) == 0
         assert int(xml_results["testsuites"]["testsuite"]["@errors"]) == 0
+
+    def junit_report_suite_no_cases_with_exception(self, test_name: str, first_suite_name: str, second_suite_name: str):
+        expected_case_count = 1
+        expected_fixtures_count = 0
+        expected_failures = 1
+
+        exit_code, _ = self.execute_test(test_name)
+        assert exit_code == ExitCode.TESTS_FAILED
+
+        number = {"number": [1, 2, 3, 4, 5]}
+
+        parametrize = list()
+        for k, lst in number.items():
+            for v in lst:
+                parametrize.append((k, v))
+
+        for tup in parametrize:
+            xml_results = self.get_test_report(suite_name=first_suite_name, args=str(tup[1]))
+            self.assert_xml_report_results_with_cases(
+                xml_results,
+                failures=expected_failures,
+                testsuite_tests=expected_case_count,
+                testsuite_name=first_suite_name,
+                fixtures_count=expected_fixtures_count,
+                functions_count=expected_case_count,
+            )

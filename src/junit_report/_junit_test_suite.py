@@ -1,11 +1,17 @@
 import datetime
+import inspect
 import os
 from pathlib import Path
 from typing import Callable, ClassVar, Dict, List, Union
 
+import pytest
+
+from ._test_case_data import TestCaseCategories, TestCaseData, CaseFailure, JunitCaseException
 from junit_xml import TestCase, TestSuite, to_xml_report_string
 
 from ._junit_decorator import JunitDecorator
+
+import traceback
 
 
 class SuiteNotExistError(KeyError):
@@ -35,6 +41,7 @@ class JunitTestSuite(JunitDecorator):
 
     DEFAULT_REPORT_PATH_KEY = "JUNIT_REPORT_DIR"
     FAIL_ON_MISSING_SUITE_KEY = "FAIL_ON_MISSING_SUITE"
+    SUITE_TEST_CASE_MESSAGE_PREFIX = "[SUITE EXCEPTION]"  # Exception on suite (without test case)
 
     XML_REPORT_FORMAT = "junit_{suite_name}_report{args}.xml"
     FAIL_ON_MISSING_SUITE = os.getenv(FAIL_ON_MISSING_SUITE_KEY, "False").lower() in ["true", "1", "yes", "y"]
@@ -49,6 +56,7 @@ class JunitTestSuite(JunitDecorator):
         self.suite = None
         self._timestamp = datetime.datetime.now()
         self._has_uncollected_fixtures = False
+        self._self_test_case = None
 
     def _on_call(self):
         self._register()
@@ -115,6 +123,8 @@ class JunitTestSuite(JunitDecorator):
         JunitTestSuite._junit_suites[self._func] = self
 
     def _get_cases(self):
+        if self._self_test_case:
+            return [data.case for data in self._cases] + [self._self_test_case]
         return [data.case for data in self._cases]
 
     def _add_case(self, test_data):
@@ -128,6 +138,9 @@ class JunitTestSuite(JunitDecorator):
         :return: underscore separated parametrize values
         """
         values = ""
+        if len(self._cases) == 0:
+            return "_".join([str(tup[1]) for tup in self._get_parameterized_on_no_cases()])
+
         test_cases = [test_case_data for test_case_data in self._cases if test_case_data.parametrize is not None]
         if test_cases:
             marks = {c.get_case_key() for c in self._cases if len(c.get_case_key()) > 0}
@@ -181,3 +194,25 @@ class JunitTestSuite(JunitDecorator):
         """
         self._has_uncollected_fixtures = False
         self._export(self.suite)
+
+    def _on_exception(self, e: BaseException):
+        if isinstance(e, JunitCaseException):
+            raise e.exception
+        self._self_test_case = TestCase(name=self._func.__name__, classname=self._get_class_name(),
+                                        category=TestCaseCategories.FUNCTION)
+        data = TestCaseData(_start_time=self._start_time, case=self._self_test_case, _func=self._func)
+        message = "[SUITE EXCEPTION] " + str(e)
+        failure = CaseFailure(message=message, output=traceback.format_exc(), type=e.__class__.__name__)
+        data.case.failures.append(failure)
+        raise
+
+    def _get_parameterized_on_no_cases(self):
+        stack_locals = [frame_info.frame.f_locals for frame_info in inspect.stack()]
+        for f_locals in [stack_local for stack_local in stack_locals if "pyfuncitem" in stack_local]:
+            pytest_func = f_locals["pyfuncitem"]
+            if hasattr(self._func, "pytestmark"):
+                parameterized = [m.args[0] for m in self._func.pytestmark if m.name == "parametrize"]
+                if isinstance(pytest_func, pytest.Function) and parameterized:
+                    return list({k: v for k, v in pytest_func.funcargs.items() if k in parameterized}.items())
+
+        return []

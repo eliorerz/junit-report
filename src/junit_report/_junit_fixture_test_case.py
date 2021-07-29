@@ -41,7 +41,7 @@ class JunitFixtureTestCase(JunitTestCase):
                 self._add_failure(e, self.AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX)
                 raise
             finally:
-                JunitTestSuite.fixture_cleanup(self._data, self.get_suite_key())
+                JunitTestSuite.fixture_cleanup(self._case_data, self.get_suite_key())
 
         return decorator.decorator(wrapper, function)
 
@@ -70,10 +70,10 @@ class JunitFixtureTestCase(JunitTestCase):
         collect_all that trigger the suite to collect all cases and export them into xml
         :return: None
         """
-        self._data.case.category = TestCaseCategories.FIXTURE
+        self._case_data.case.category = TestCaseCategories.FIXTURE
 
         super(JunitFixtureTestCase, self)._on_wrapper_end()
-        if len(self._data.case.failures) > 0:
+        if len(self._case_data.case.failures) > 0:
             JunitTestSuite.collect_all()
 
     def _get_suite(self) -> Union[Callable, None]:
@@ -95,8 +95,8 @@ class JunitFixtureTestCase(JunitTestCase):
                 if hasattr(func, "own_markers") and len(func.own_markers) > 0:
                     mark_function = self._get_mark_function(func.own_markers, func)
                     if func.callspec and func.callspec.params:
-                        if not self._data.parametrize:
-                            self._data.set_parametrize(list(func.callspec.params.items()))
+                        if not self._case_data.parametrize:
+                            self._case_data.set_parametrize(list(func.callspec.params.items()))
 
                     if mark_function:
                         return mark_function
@@ -118,7 +118,8 @@ class JunitFixtureTestCase(JunitTestCase):
             return JunitTestSuite.is_suite_exist(func.__wrapped__)
         return False
 
-    def _get_mark_function(self, own_markers: List[Mark], func: Function) -> Union[Callable, None]:
+    @staticmethod
+    def _get_mark_function(own_markers: List[Mark], func: Function) -> Union[Callable, None]:
         """
         If mark parameterize decorate test suite with given fixture _get_mark_function is searching
         for all parametrize arguments and permutations.

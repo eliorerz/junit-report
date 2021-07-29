@@ -75,3 +75,12 @@ class TestPytestModule(_TestExternal):
         test = "external_tests/module_tests/_test_junit_report_test_cases_without_suite.py"
         report_name = "unittest.xml"
         self.pytest_suite_no_junit_suite(test, report_name)
+
+    def test_suite_no_cases_with_exception(self):
+        file = "_test_junit_report_not_test_case_with_exception"
+        test = f"external_tests/module_tests/{file}.py"
+        first_suite_name = f"tests.external_tests.module_tests.{file}_test_suite_no_cases_with_exception_parametrize"
+        second_suite_name = f"tests.external_tests.module_tests.{file}_" \
+                            f"test_suite_fixture_with_parametrize_throws_exception"
+
+        self.junit_report_suite_no_cases_with_exception(test, first_suite_name, second_suite_name)

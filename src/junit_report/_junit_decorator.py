@@ -1,5 +1,6 @@
 import inspect
 import re
+import time
 from abc import ABC, abstractmethod
 from typing import Any, Callable
 
@@ -9,6 +10,7 @@ import decorator
 class JunitDecorator(ABC):
     def __init__(self) -> None:
         self._func = None
+        self._start_time = None
 
     def __call__(self, function: Callable) -> Callable:
         """
@@ -88,3 +90,4 @@ class JunitDecorator(ABC):
         This function executed when wrapper function starts
         :return: None
         """
+        self._start_time = time.time()

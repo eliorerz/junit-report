@@ -45,8 +45,9 @@ class TestWithPytestDecorators(_TestExternal):
         test = "external_tests/class_tests/_test_junit_report_nested_test_case.py"
         first_suite_name = "TestJunitNestedTestCase_test_suite_nested_fixture"
         second_suite_name = "TestJunitNestedTestCase_test_suite_nested_fixture_wrong_type"
+        third_suite_name = "TestJunitNestedTestCase_test_suite_nested_test_case_exception"
 
-        self.nested_test_case(test, "class", first_suite_name, second_suite_name)
+        self.nested_test_case(test, "class", first_suite_name, second_suite_name, third_suite_name)
 
     def test_fixture_raise_exception_after_yield(self):
         test = "external_tests/class_tests/_test_junit_report_fixture_raise_exception_after_yield.py"

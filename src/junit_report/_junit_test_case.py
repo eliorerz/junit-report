@@ -42,6 +42,8 @@ class JunitTestCase(JunitDecorator):
         self._case_data.case.failures.append(failure)
 
     def _on_exception(self, e: BaseException):
+        if isinstance(e, JunitCaseException):
+            raise  # already registered on son test case
         self._add_failure(e)
         raise JunitCaseException(exception=e)
 

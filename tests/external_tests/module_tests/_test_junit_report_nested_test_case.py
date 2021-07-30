@@ -56,3 +56,18 @@ def other_test_case():
 @JunitTestCase()
 def third_test_case():
     pass
+
+
+@JunitTestSuite(REPORT_DIR)
+def test_suite_nested_test_case_exception():
+    other_nested_test_case()
+
+
+@JunitTestCase()
+def other_nested_test_case():
+    exception_test_case()
+
+
+@JunitTestCase()
+def exception_test_case():
+    raise OSError("OSOSOSOS")

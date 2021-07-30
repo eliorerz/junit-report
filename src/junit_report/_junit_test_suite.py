@@ -46,9 +46,10 @@ class JunitTestSuite(JunitDecorator):
     XML_REPORT_FORMAT = "junit_{suite_name}_report{args}.xml"
     FAIL_ON_MISSING_SUITE = os.getenv(FAIL_ON_MISSING_SUITE_KEY, "False").lower() in ["true", "1", "yes", "y"]
 
-    def __init__(self, report_dir: Path = None):
+    def __init__(self, report_dir: Path = None, custom_filename: str = None):
         """
         :param report_dir: Target directory, created if not exists
+        :param custom_filename: If set, xml report will set to <exported_filename>.xml
         """
         super().__init__()
         self._report_dir = self.get_report_dir(report_dir)
@@ -56,6 +57,7 @@ class JunitTestSuite(JunitDecorator):
         self.suite = None
         self._timestamp = datetime.datetime.now()
         self._has_uncollected_fixtures = False
+        self._custom_filename = custom_filename
         self._self_test_case = None
 
     def _on_call(self):
@@ -68,7 +70,9 @@ class JunitTestSuite(JunitDecorator):
         self._export(self.suite)
 
     @classmethod
-    def get_report_file_name(cls, suite_name: str, args: str = None):
+    def get_report_file_name(cls, suite_name: str, args: str = None, custom_filename: str = None):
+        if custom_filename:
+            return f"{custom_filename}.xml"
         if args:
             return cls.XML_REPORT_FORMAT.format(suite_name=suite_name, args=f"[{args}]")
         return cls.XML_REPORT_FORMAT.format(suite_name=suite_name, args="")
@@ -159,7 +163,8 @@ class JunitTestSuite(JunitDecorator):
 
         if not self._has_uncollected_fixtures:
             values = self._get_parametrize_values()
-            path = self._report_dir.joinpath(self.get_report_file_name(suite_name=suite.name, args=values))
+            path = self._report_dir.joinpath(self.get_report_file_name(
+                suite_name=suite.name, args=values, custom_filename=self._custom_filename))
             xml_string = to_xml_report_string([suite])
 
             os.makedirs(self._report_dir, exist_ok=True)

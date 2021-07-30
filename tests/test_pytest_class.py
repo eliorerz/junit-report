@@ -8,6 +8,13 @@ class TestWithPytestDecorators(_TestExternal):
 
         self.base_flow(test, expected_suite_name)
 
+    def test_custom_filename(self):
+        test = "external_tests/class_tests/_test_junit_report_class_fixtures_with_custom_report_name.py"
+        expected_suite_name = "some_test_with_one_fixture"
+        expected_other_suite_name = "another_test_with_no_fixtures11"
+
+        self.expected_filename(test, expected_suite_name, expected_other_suite_name)
+
     def test_multiple_fixtures(self):
         test = "external_tests/class_tests/_test_junit_report_class_fixtures_multiple_fixtures.py"
         expected_suite_name = "TestJunitFixtureTestCase_test_suite_two_fixtures"

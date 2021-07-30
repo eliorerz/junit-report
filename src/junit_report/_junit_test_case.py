@@ -85,7 +85,7 @@ class JunitTestCase(JunitDecorator):
                         break
 
                 self.__set_parametrize(suite_func, suite_arguments)
-                # return suite_func
+                break
 
         return suite_func
 

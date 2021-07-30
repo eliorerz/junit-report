@@ -1,6 +1,7 @@
 import io
 import itertools
 import os
+import re
 import shutil
 from collections import OrderedDict
 from contextlib import redirect_stdout
@@ -184,13 +185,15 @@ class _TestExternal(ExternalBaseTest):
 
         for tup in parametrize:
             xml_results = self.get_test_report(suite_name=first_suite_name, args=str(tup[1]))
-            self.assert_xml_report_results_with_cases(
+            cases = self.assert_xml_report_results_with_cases(
                 xml_results,
                 testsuite_tests=expected_fixtures_count + expected_cases_count,
                 testsuite_name=first_suite_name,
                 fixtures_count=expected_fixtures_count,
                 functions_count=expected_cases_count,
             )
+            for case in cases:
+                assert len(re.compile(r"\[(.*?)]").findall(str(case["@name"]))) == 1
 
         fixtures_count = 2
         cases_count = 2
@@ -210,6 +213,7 @@ class _TestExternal(ExternalBaseTest):
 
             # Verify that each case name have the represented values on its name
             for c in cases:
+                assert len(re.compile(r"\[(.*?)]").findall(str(c["@name"]))) == 1
                 if c["@class"] == TestCaseCategories.FUNCTION:
                     assert "animal=" in c["@name"] and k[0] in c["@name"]
                     assert "letter=" in c["@name"] and k[1] in c["@name"]

@@ -11,10 +11,6 @@ from ._junit_decorator import JunitDecorator
 from ._test_case_data import CaseFailure, JunitCaseException, TestCaseCategories, TestCaseData
 
 
-class SuiteNotExistError(KeyError):
-    """ Test Suite decorator name is not exists in suites poll """
-
-
 class DuplicateSuiteError(KeyError):
     """ Test Suite decorator name is already exist in suites poll """
 
@@ -37,11 +33,9 @@ class JunitTestSuite(JunitDecorator):
     suite: Union[TestSuite, None]
 
     DEFAULT_REPORT_PATH_KEY = "JUNIT_REPORT_DIR"
-    FAIL_ON_MISSING_SUITE_KEY = "FAIL_ON_MISSING_SUITE"
     SUITE_TEST_CASE_MESSAGE_PREFIX = "[SUITE EXCEPTION]"  # Exception on suite (without test case)
 
     XML_REPORT_FORMAT = "junit_{suite_name}_report{args}.xml"
-    FAIL_ON_MISSING_SUITE = os.getenv(FAIL_ON_MISSING_SUITE_KEY, "False").lower() in ["true", "1", "yes", "y"]
 
     def __init__(self, report_dir: Path = None, custom_filename: str = None):
         """
@@ -123,9 +117,6 @@ class JunitTestSuite(JunitDecorator):
             cls._add_case(suite, test_data)
             if is_inside_fixture:
                 suite._on_wrapper_end()
-        else:
-            if cls.FAIL_ON_MISSING_SUITE:
-                raise SuiteNotExistError(f"Can't find suite named {suite_func} for {test_data} test case")
 
     def _register(self):
         if self._func in JunitTestSuite._junit_suites:
@@ -213,12 +204,15 @@ class JunitTestSuite(JunitDecorator):
     def _on_exception(self, e: BaseException):
         if isinstance(e, JunitCaseException):
             raise e.exception
+        self._handle_in_suite_exception(e)
+
+    def _handle_in_suite_exception(self, exception: BaseException):
         self._self_test_case = TestCase(
             name=self._func.__name__, classname=self._get_class_name(), category=TestCaseCategories.FUNCTION
         )
         data = TestCaseData(_start_time=self._start_time, case=self._self_test_case, _func=self._func)
-        message = "[SUITE EXCEPTION] " + str(e)
-        failure = CaseFailure(message=message, output=traceback.format_exc(), type=e.__class__.__name__)
+        message = "[SUITE EXCEPTION] " + str(exception)
+        failure = CaseFailure(message=message, output=traceback.format_exc(), type=exception.__class__.__name__)
         data.case.failures.append(failure)
         raise
 

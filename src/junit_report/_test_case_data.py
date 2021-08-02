@@ -1,5 +1,6 @@
 import time
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Callable, List, Tuple, Union
 
 from junit_xml import TestCase
@@ -8,6 +9,12 @@ from junit_xml import TestCase
 class TestCaseCategories:
     FUNCTION = "function"
     FIXTURE = "fixture"
+
+
+class MainRunner(Enum):
+    PYTEST = "pytest"
+    PYTHON = "python"
+    NONE = "none"
 
 
 class JunitCaseException(BaseException):

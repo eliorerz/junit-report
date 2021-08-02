@@ -48,10 +48,13 @@ class JunitTestCase(JunitDecorator):
         self._add_failure(e)
         raise JunitCaseException(exception=e)
 
-    def _on_wrapper_end(self):
+    def _on_wrapper_end(self) -> bool:
         self._case_data.set_fin_time()
         suite_func = self.get_suite_key()
+        if suite_func is None:
+            return False
         JunitTestSuite.register_case(self._case_data, suite_func, self._is_inside_fixture)
+        return True
 
     def get_suite_key(self) -> Union[Callable, None]:
         """
@@ -60,12 +63,10 @@ class JunitTestCase(JunitDecorator):
         collect its parameters and record them into the test case.
         :return: Wrapped Suite function instance
         """
-        try:
+        with suppress(AttributeError):
             suite_func = self._get_suite()
             return suite_func
-        except AttributeError:
-            if JunitTestSuite.FAIL_ON_MISSING_SUITE:
-                raise
+
         return None
 
     def _set_parameterized(self, pytest_function: Function):

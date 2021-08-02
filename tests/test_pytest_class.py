@@ -63,6 +63,13 @@ class TestWithPytestDecorators(_TestExternal):
     def test_suite_no_cases_with_exception(self):
         test = "external_tests/class_tests/_test_junit_report_not_test_case_with_exception.py"
         first_suite_name = "TestJunitSuiteNoCases_test_suite_no_cases_with_exception_parametrize"
-        second_suite_name = "TestJunitSuiteNoCases_test_suite_fixture_with_parametrize_throws_exception"
+        second_suite_name = "TestJunitSuiteNoCases_test_suite_no_cases_with_exception"
 
         self.junit_report_suite_no_cases_with_exception(test, first_suite_name, second_suite_name)
+
+    def test_suite_cases_raise_inside_exception(self):
+        test = "external_tests/class_tests/_test_junit_report_test_case_raise_inside_fixture.py"
+        first_suite_name = "TestJunitTestCaseRaiseOnFixture_test_suite_raise_before_yield"
+        second_suite_name = "TestJunitTestCaseRaiseOnFixture_test_suite_raise_after_yield"
+
+        self.junit_report_cases_raise_inside_exception(test, first_suite_name, second_suite_name)

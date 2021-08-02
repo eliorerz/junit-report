@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import List, Tuple, Any, Callable, Union
+from typing import Any, Callable, List, Tuple, Union
 
 from junit_xml import TestCase
 
@@ -46,6 +46,7 @@ class TestCaseData:
         self.case.elapsed_sec = time.time() - self._start_time
 
     def get_case_key(self):
+        """ return immutable key """
         if self.parametrize:
             return tuple(sorted(self.parametrize))
         return ()

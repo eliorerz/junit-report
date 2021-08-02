@@ -25,14 +25,14 @@ REPORT_DIR = Path.cwd().joinpath(".reports")
 class BaseTest:
     @classmethod
     def assert_xml_report_results_with_cases(
-        cls,
-        xml_results: dict,
-        testsuite_tests: int,
-        testsuite_name: str,
-        failures=0,
-        errors=0,
-        fixtures_count=0,
-        functions_count=0,
+            cls,
+            xml_results: dict,
+            testsuite_tests: int,
+            testsuite_name: str,
+            failures=0,
+            errors=0,
+            fixtures_count=0,
+            functions_count=0,
     ) -> List[OrderedDict]:
         cases = cls.assert_xml_report_results(xml_results, testsuite_tests, testsuite_name, failures, errors)
 
@@ -42,11 +42,11 @@ class BaseTest:
 
     @staticmethod
     def assert_xml_report_results(
-        xml_results: dict,
-        testsuite_tests: int,
-        testsuite_name: str,
-        failures=0,
-        errors=0,
+            xml_results: dict,
+            testsuite_tests: int,
+            testsuite_name: str,
+            failures=0,
+            errors=0,
     ) -> List[OrderedDict]:
         assert "testsuites" in xml_results
         assert int(xml_results["testsuites"]["@failures"]) == failures
@@ -131,8 +131,9 @@ class _TestExternal(ExternalBaseTest):
             functions_count=2,
         )
 
-    def nested_test_case(self, test_name: str, exec_type: str, first_suite_name: str,
-                         second_suite_name: str, third_suite_name: str):
+    def nested_test_case(
+            self, test_name: str, exec_type: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
+    ):
         exit_code, _ = self.execute_test(test_name)
         assert exit_code == ExitCode.TESTS_FAILED
         xml_results = self.get_test_report(suite_name=first_suite_name)
@@ -175,7 +176,7 @@ class _TestExternal(ExternalBaseTest):
         )
 
     def multiple_fixtures_with_parametrize(
-        self, test_name: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
+            self, test_name: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
     ):
         version = {"version": ["5.1", "6.21980874565", 6.5, "some__long_string_that_is_not_a_number"]}
         letter = {"letter": ["A", "B", "C"]}
@@ -396,3 +397,31 @@ class _TestExternal(ExternalBaseTest):
                 fixtures_count=expected_fixtures_count,
                 functions_count=expected_case_count,
             )
+
+        xml_results = self.get_test_report(suite_name=second_suite_name)
+        self.assert_xml_report_results_with_cases(
+            xml_results,
+            failures=expected_failures,
+            testsuite_tests=expected_case_count,
+            testsuite_name=second_suite_name,
+            fixtures_count=expected_fixtures_count,
+            functions_count=expected_case_count,
+        )
+
+    def junit_report_cases_raise_inside_exception(self, test_name: str, first_suite_name: str, second_suite_name: str):
+        expected_case_count = 1
+        expected_fixtures_count = 0
+        expected_failures = 1
+
+        exit_code, _ = self.execute_test(test_name)
+        assert exit_code == ExitCode.TESTS_FAILED
+
+        xml_results = self.get_test_report(suite_name=first_suite_name)
+        self.assert_xml_report_results_with_cases(
+            xml_results,
+            failures=expected_failures,
+            testsuite_tests=expected_case_count,
+            testsuite_name=first_suite_name,
+            fixtures_count=expected_fixtures_count,
+            functions_count=expected_case_count,
+        )

@@ -1,8 +1,7 @@
 import pytest
 from _pytest.fixtures import SubRequest
-from junit_report import JunitTestSuite
 
-from src.junit_report import JunitFixtureTestCase
+from src.junit_report import JunitFixtureTestCase, JunitTestSuite
 from tests import REPORT_DIR
 
 EXPECTED_FIXTURE_PARAMS = {"arg_to_pass": "test_arg_1234"}
@@ -35,6 +34,6 @@ def test_suite_no_cases_with_exception_parametrize(number):
 
 @pytest.mark.regression1
 @pytest.mark.sanity
-@pytest.mark.parametrize("number", [1, 2, 3, 4, 5])
-def test_no_suite_with_parametrize(number):
+@JunitTestSuite(REPORT_DIR)
+def test_suite_no_cases_with_exception():
     raise RuntimeError("Something went wrong during runtime")

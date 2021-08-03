@@ -99,23 +99,17 @@ class JunitTestSuite(JunitDecorator):
         return suite_func in cls._junit_suites
 
     @classmethod
-    def register_case(cls, test_data, suite_func: Callable, is_inside_fixture: bool = False) -> None:
+    def register_case(cls, test_data: TestCaseData, suite_func: Callable) -> None:
         """
         Register test case to the relevant test suite
         :param test_data: TestCaseData instance
         :param suite_func: Wrapped function as cases key
-        :param is_inside_fixture: Determine if the test case was executed inside fixture e.g.
-            @pytest.fixture
-            def my_fixture():
-                test_case_that_may_raise_exception()
-                yield
-
         :return: None
         """
         if cls.is_suite_exist(suite_func):
             suite = cls.get_suite(suite_func)
             cls._add_case(suite, test_data)
-            if is_inside_fixture:
+            if test_data.is_inside_fixture and test_data.had_exception:
                 suite._on_wrapper_end()
 
     def _register(self):

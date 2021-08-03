@@ -40,6 +40,8 @@ class TestCaseData:
     _start_time: float
     parametrize: Union[None, List[Tuple[str, Any]]] = None
     _has_parent = False
+    is_inside_fixture = False
+    had_exception = False
 
     @property
     def name(self):

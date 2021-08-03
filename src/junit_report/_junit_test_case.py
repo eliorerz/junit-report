@@ -43,6 +43,7 @@ class JunitTestCase(JunitDecorator):
         self._case_data.case.failures.append(failure)
 
     def _on_exception(self, e: BaseException):
+        self._case_data.had_exception = True
         if isinstance(e, JunitCaseException):
             raise  # already registered on son test case
         self._add_failure(e)
@@ -53,7 +54,7 @@ class JunitTestCase(JunitDecorator):
         suite_func = self.get_suite_key()
         if suite_func is None:
             return False
-        JunitTestSuite.register_case(self._case_data, suite_func, self._is_inside_fixture)
+        JunitTestSuite.register_case(self._case_data, suite_func)
         return True
 
     def get_suite_key(self) -> Union[Callable, None]:
@@ -86,7 +87,9 @@ class JunitTestCase(JunitDecorator):
         if suite_func is None:
             is_inside_fixture = True
             suite_func = self._get_fixture_suite(self._pytest_function)
+            # test case inside fixture with suite_func - if also exception - that is our case
 
+        self._case_data.is_inside_fixture = is_inside_fixture
         self._is_inside_fixture = is_inside_fixture
         return suite_func
 

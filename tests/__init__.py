@@ -35,8 +35,8 @@ class BaseTest:
     ) -> List[OrderedDict]:
         cases = cls.assert_xml_report_results(xml_results, testsuite_tests, testsuite_name, failures, errors)
 
-        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE]) == fixtures_count
-        assert len([c for c in cases if c["@class"] == TestCaseCategories.FUNCTION]) == functions_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE.value]) == fixtures_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.FUNCTION.value]) == functions_count
         return cases
 
     @staticmethod
@@ -58,6 +58,8 @@ class BaseTest:
         assert testsuite["@name"] == testsuite_name
 
         cases = testsuite["testcase"]
+        if isinstance(cases, OrderedDict):
+            return [cases]
         return cases
 
     @staticmethod
@@ -340,3 +342,52 @@ class _TestExternal(ExternalBaseTest):
         assert int(xml_results["testsuites"]["testsuite"]["@tests"]) == 1 + parametrize_count
         assert int(xml_results["testsuites"]["testsuite"]["@failures"]) == 0
         assert int(xml_results["testsuites"]["testsuite"]["@errors"]) == 0
+
+    def junit_report_inner_suite_exception(self,
+                                           test_name: str,
+                                           first_suite_name: str,
+                                           second_suite_name: str,
+                                           third_suite_name: str,
+                                           fourth_suite_name: str,
+                                           fifth_suite_name: str):
+
+        exit_code, _ = self.execute_test(test_name)
+        assert exit_code == ExitCode.TESTS_FAILED
+
+        number = {"number": [1, 2, 3, 4, 5]}
+
+        parametrize = list()
+        for k, lst in number.items():
+            for v in lst:
+                parametrize.append((k, v))
+
+        tests = {first_suite_name: (1, 0, 1),
+                 third_suite_name: (3, 0, 1),
+                 fourth_suite_name: (3, 0, 1),
+                 fifth_suite_name: (2, 1, 1)}
+        for test, params in tests.items():
+            expected_case_count, expected_fixtures_count, expected_failures = params
+
+            for tup in parametrize:
+                xml_results = self.get_test_report(suite_name=test, args=str(tup[1]))
+                self.assert_xml_report_results_with_cases(
+                    xml_results,
+                    failures=expected_failures,
+                    testsuite_tests=expected_case_count + expected_fixtures_count,
+                    testsuite_name=test,
+                    fixtures_count=expected_fixtures_count,
+                    functions_count=expected_case_count,
+                )
+
+        expected_case_count = 1
+        expected_fixtures_count = 0
+        expected_failures = 1
+        xml_results = self.get_test_report(suite_name=second_suite_name)
+        self.assert_xml_report_results_with_cases(
+            xml_results,
+            failures=expected_failures,
+            testsuite_tests=expected_case_count,
+            testsuite_name=second_suite_name,
+            fixtures_count=expected_fixtures_count,
+            functions_count=expected_case_count,
+        )

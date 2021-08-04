@@ -1,11 +1,13 @@
 import datetime
 import os
+import traceback
 from pathlib import Path
 from typing import Callable, ClassVar, Dict, List, Union
 
 from junit_xml import TestCase, TestSuite, to_xml_report_string
 
 from ._junit_decorator import JunitDecorator
+from .utils import Utils, TestCaseCategories, TestCaseData, CaseFailure, PytestUtils
 
 
 class DuplicateSuiteError(KeyError):
@@ -43,6 +45,7 @@ class JunitTestSuite(JunitDecorator):
         self.suite = None
         self._timestamp = datetime.datetime.now()
         self._has_uncollected_fixtures = False
+        self._self_test_case = None
 
     def _on_call(self):
         self._register()
@@ -100,6 +103,8 @@ class JunitTestSuite(JunitDecorator):
         JunitTestSuite._junit_suites[self._func] = self
 
     def _get_cases(self):
+        if self._self_test_case:
+            return [data.case for data in self._cases] + [self._self_test_case]
         return [data.case for data in self._cases]
 
     def _add_case(self, test_data):
@@ -107,18 +112,15 @@ class JunitTestSuite(JunitDecorator):
             self._has_uncollected_fixtures = True
         return self._cases.append(test_data)
 
-    def _get_parametrize_values(self) -> str:
+    def _get_parametrize_as_str(self) -> str:
         """
         In case of pytest parametrize, this function collect and return parametrizes values
         :return: underscore separated parametrize values
         """
-        values = ""
-        test_cases = [test_case_data for test_case_data in self._cases if test_case_data.parametrize is not None]
-        if test_cases:
-            marks = {c.get_case_key() for c in self._cases if len(c.get_case_key()) > 0}
-            if marks:
-                values = "_".join([str(tup[1]) for tup in marks.pop()])
-        return values
+        parameterize = PytestUtils.get_suite_pytest_parameterized(self._cases, self._func, self._stack_locals)
+        if parameterize:
+            return "_".join(str(tup[1]) for tup in parameterize)
+        return ""
 
     def _export(self, suite: TestSuite) -> None:
         """
@@ -130,7 +132,7 @@ class JunitTestSuite(JunitDecorator):
             return
 
         if not self._has_uncollected_fixtures:
-            values = self._get_parametrize_values()
+            values = self._get_parametrize_as_str()
             path = self._report_dir.joinpath(self.XML_REPORT_FORMAT.format(suite_name=suite.name, args=values))
             xml_string = to_xml_report_string([suite])
 
@@ -166,3 +168,18 @@ class JunitTestSuite(JunitDecorator):
         """
         self._has_uncollected_fixtures = False
         self._export(self.suite)
+
+    def _on_exception(self, e: BaseException):
+        if Utils.is_case_exception_already_raised(e):
+            raise e
+
+        self._handle_in_suite_exception(e)
+
+    def _handle_in_suite_exception(self, exception: BaseException):
+        self._self_test_case = Utils.get_new_test_case(self._func, self._get_class_name(), TestCaseCategories.FUNCTION)
+
+        case_data = TestCaseData(_start_time=self._start_time, case=self._self_test_case, _func=self._func)
+        message = "[SUITE EXCEPTION] " + str(exception)
+        failure = CaseFailure(message=message, output=traceback.format_exc(), type=exception.__class__.__name__)
+        case_data.case.failures.append(failure)
+        raise exception

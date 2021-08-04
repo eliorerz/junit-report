@@ -1,62 +1,12 @@
 import inspect
-import time
 import traceback
 from contextlib import suppress
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Union
 
-from junit_xml import TestCase
 
 from ._junit_decorator import JunitDecorator
 from ._junit_test_suite import JunitTestSuite
-
-
-@dataclass
-class CaseFailure:
-    message: str
-    output: str = ""
-    type: str = ""
-
-    def __getitem__(self, item):
-        return self.__getattribute__(item)
-
-
-@dataclass
-class TestCaseData:
-    case: TestCase
-    _func: Callable
-    _start_time: float
-    parametrize: Union[None, List[Tuple[str, Any]]] = None
-    _has_parent = False
-
-    @property
-    def name(self):
-        return self._func.__name__
-
-    @property
-    def has_parent(self):
-        return self._has_parent
-
-    def set_fin_time(self):
-        self.case.elapsed_sec = time.time() - self._start_time
-
-    def get_case_key(self):
-        if self.parametrize:
-            return tuple(sorted(self.parametrize))
-        return ()
-
-    def set_parametrize(self, params: List[Tuple[str, Any]]):
-        self.parametrize = params
-        self.case.name += f'({", ".join([f"{p[0]}={p[1]}" for p in params])})'
-
-    def set_parent(self, case_parent_name: str):
-        self._has_parent = True
-        self.case.classname = f"{self.case.classname}.{case_parent_name}"
-
-
-class TestCaseCategories:
-    FUNCTION = "function"
-    FIXTURE = "fixture"
+from .utils import TestCaseCategories, TestCaseData, CaseFailure, Utils
 
 
 class JunitTestCase(JunitDecorator):
@@ -81,10 +31,9 @@ class JunitTestCase(JunitDecorator):
             return self._data.name
 
     def _on_wrapper_start(self, function):
-        self._stack_locals = [frame_info.frame.f_locals for frame_info in inspect.stack()]
-        start_time = time.time()
-        case = TestCase(name=function.__name__, classname=self._get_class_name(), category=TestCaseCategories.FUNCTION)
-        self._data = TestCaseData(_start_time=start_time, case=case, _func=function)
+        super()._on_wrapper_start(function)
+        case = Utils.get_new_test_case(function, self._get_class_name(), TestCaseCategories.FUNCTION)
+        self._data = TestCaseData(_start_time=self._start_time, case=case, _func=function)
 
     def _add_failure(self, e: BaseException, message_prefix: str = ""):
         message = f"{message_prefix} {str(e)}" if message_prefix else str(e)
@@ -92,8 +41,11 @@ class JunitTestCase(JunitDecorator):
         self._data.case.failures.append(failure)
 
     def _on_exception(self, e: BaseException):
+        if Utils.is_case_exception_already_raised(e):
+            raise  # already registered on son test case
+        Utils.mark_case_exception_as_raised(e)
         self._add_failure(e)
-        raise
+        raise e
 
     def _on_wrapper_end(self):
         self._data.set_fin_time()

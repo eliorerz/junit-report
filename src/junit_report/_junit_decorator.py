@@ -1,5 +1,6 @@
 import inspect
 import re
+import time
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from typing import Any, Callable
@@ -10,6 +11,8 @@ import decorator
 class JunitDecorator(ABC):
     def __init__(self) -> None:
         self._func = None
+        self._start_time = None
+        self._stack_locals = list()
 
     def __call__(self, function: Callable) -> Callable:
         """
@@ -91,3 +94,5 @@ class JunitDecorator(ABC):
         This function executed when wrapper function starts
         :return: None
         """
+        self._start_time = time.time()
+        self._stack_locals = [frame_info.frame.f_locals for frame_info in inspect.stack()]

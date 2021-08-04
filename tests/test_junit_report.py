@@ -86,7 +86,7 @@ class TestJunitReport(BaseTest):
         with open(test_suite_single_case.REPORT_PATH) as f:
             xml_results = xmltodict.parse(f.read())
 
-        cases = self.assert_xml_report_results(xml_results, testsuite_tests=1, testsuite_name="A_test_suite2")
+        cases = self.assert_xml_report_results(xml_results, testsuite_tests=1, testsuite_name="A_test_suite2").pop()
 
         assert cases["@classname"] == "A"
         assert cases["@name"] == "_test_case1"

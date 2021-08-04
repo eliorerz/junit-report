@@ -70,7 +70,7 @@ class JunitFixtureTestCase(JunitTestCase):
         collect_all that trigger the suite to collect all cases and export them into xml
         :return: None
         """
-        self._data.case.category = TestCaseCategories.FIXTURE
+        self._data.case.category = TestCaseCategories.FIXTURE.value
 
         super(JunitFixtureTestCase, self)._on_wrapper_end()
         if len(self._data.case.failures) > 0:

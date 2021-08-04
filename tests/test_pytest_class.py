@@ -51,3 +51,15 @@ class TestWithPytestDecorators(_TestExternal):
         test = "external_tests/class_tests/_test_junit_report_test_cases_without_suite.py"
         report_name = "unittest.xml"
         self.pytest_suite_no_junit_suite(test, report_name)
+
+    def test_suite_no_cases_with_exception(self):
+        test = "external_tests/class_tests/_test_junit_report_inner_suite_exception.py"
+        first_suite_name = "TestJunitSuiteNoCases_test_suite_no_cases_with_exception_parametrize"
+        second_suite_name = "TestJunitSuiteNoCases_test_suite_no_cases_with_exception"
+        third_suite_name = "TestJunitSuiteNoCases_test_suite_cases_with_inner_exception_with_parametrize"
+        fourth_suite_name = "TestJunitSuiteNoCases_test_suite_cases_with_inner_exception_with_parametrize_and_fixture"
+        fifth_suite_name = "TestJunitSuiteNoCases_test_suite_cases_with_inner_" \
+                           "exception_with_parametrize_and_test_fixture"
+
+        self.junit_report_inner_suite_exception(test, first_suite_name, second_suite_name, third_suite_name,
+                                                fourth_suite_name, fifth_suite_name)

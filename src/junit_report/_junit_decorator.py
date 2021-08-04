@@ -1,6 +1,7 @@
 import inspect
 import re
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from typing import Any, Callable
 
 import decorator
@@ -30,13 +31,15 @@ class JunitDecorator(ABC):
     def _wrapper(self, function: Callable, *args, **kwargs):
         value = None
 
-        self._on_wrapper_start(function)
+        with suppress(BaseException):
+            self._on_wrapper_start(function)
         try:
             value = self._execute_wrapped_function(*args, **kwargs)
         except BaseException as e:
             self._on_exception(e)
         finally:
-            self._on_wrapper_end()
+            with suppress(BaseException):
+                self._on_wrapper_end()
         return value
 
     def _get_class_name(self) -> str:

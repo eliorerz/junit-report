@@ -202,7 +202,7 @@ class JunitTestSuite(JunitDecorator):
 
     def _handle_in_suite_exception(self, exception: BaseException):
         self._self_test_case = TestCase(
-            name=self._func.__name__, classname=self._get_class_name(), category=TestCaseCategories.FUNCTION
+            name=self._func.__name__, classname=self._get_class_name(), category=TestCaseCategories.FUNCTION.value
         )
         data = TestCaseData(_start_time=self._start_time, case=self._self_test_case, _func=self._func)
         message = "[SUITE EXCEPTION] " + str(exception)

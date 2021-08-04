@@ -34,7 +34,8 @@ class JunitTestCase(JunitDecorator):
 
     def _on_wrapper_start(self, function):
         super()._on_wrapper_start(function)
-        case = TestCase(name=function.__name__, classname=self._get_class_name(), category=TestCaseCategories.FUNCTION)
+        case = TestCase(name=function.__name__, classname=self._get_class_name(),
+                        category=TestCaseCategories.FUNCTION.value)
         self._case_data = TestCaseData(_start_time=self._start_time, case=case, _func=function)
 
     def _add_failure(self, e: BaseException, message_prefix: str = ""):

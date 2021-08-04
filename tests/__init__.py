@@ -36,8 +36,8 @@ class BaseTest:
     ) -> List[OrderedDict]:
         cases = cls.assert_xml_report_results(xml_results, testsuite_tests, testsuite_name, failures, errors)
 
-        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE]) == fixtures_count
-        assert len([c for c in cases if c["@class"] == TestCaseCategories.FUNCTION]) == functions_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE.value]) == fixtures_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.FUNCTION.value]) == functions_count
         return cases
 
     @staticmethod

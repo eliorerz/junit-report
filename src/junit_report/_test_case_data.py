@@ -6,7 +6,7 @@ from typing import Any, Callable, List, Tuple, Union
 from junit_xml import TestCase
 
 
-class TestCaseCategories:
+class TestCaseCategories(Enum):
     FUNCTION = "function"
     FIXTURE = "fixture"
 
@@ -21,6 +21,12 @@ class JunitCaseException(BaseException):
     def __init__(self, exception: BaseException, *args: object) -> None:
         super().__init__(*args)
         self.exception: BaseException = exception
+
+    def __str__(self) -> str:
+        return self.exception.__str__()
+
+    def __repr__(self) -> str:
+        return self.exception.__repr__()
 
 
 @dataclass

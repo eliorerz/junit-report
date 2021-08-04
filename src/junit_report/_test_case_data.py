@@ -6,6 +6,9 @@ from typing import Any, Callable, List, Tuple, Union
 from junit_xml import TestCase
 
 
+JUNIT_EXCEPTION_ON_TAG = "__is_junit_exception__"
+
+
 class TestCaseCategories(Enum):
     FUNCTION = "function"
     FIXTURE = "fixture"
@@ -15,18 +18,6 @@ class MainRunner(Enum):
     PYTEST = "pytest"
     PYTHON = "python"
     NONE = "none"
-
-
-class JunitCaseException(BaseException):
-    def __init__(self, exception: BaseException, *args: object) -> None:
-        super().__init__(*args)
-        self.exception: BaseException = exception
-
-    def __str__(self) -> str:
-        return self.exception.__str__()
-
-    def __repr__(self) -> str:
-        return self.exception.__repr__()
 
 
 @dataclass
@@ -73,3 +64,7 @@ class TestCaseData:
     def set_parent(self, case_parent_name: str):
         self._has_parent = True
         self.case.classname = f"{self.case.classname}.{case_parent_name}"
+
+
+def is_case_exception_already_raised(exception: BaseException) -> bool:
+    return hasattr(exception, JUNIT_EXCEPTION_ON_TAG)

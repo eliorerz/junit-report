@@ -8,7 +8,7 @@ import pytest
 from junit_xml import TestCase, TestSuite, to_xml_report_string
 
 from ._junit_decorator import JunitDecorator
-from ._test_case_data import CaseFailure, JunitCaseException, TestCaseCategories, TestCaseData
+from ._test_case_data import CaseFailure, TestCaseCategories, TestCaseData, is_case_exception_already_raised
 
 
 class DuplicateSuiteError(KeyError):
@@ -196,8 +196,9 @@ class JunitTestSuite(JunitDecorator):
         self._export(self.suite)
 
     def _on_exception(self, e: BaseException):
-        if isinstance(e, JunitCaseException):
-            raise e.exception
+        if is_case_exception_already_raised(e):
+            raise e
+
         self._handle_in_suite_exception(e)
 
     def _handle_in_suite_exception(self, exception: BaseException):

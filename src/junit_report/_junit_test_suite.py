@@ -8,10 +8,6 @@ from junit_xml import TestCase, TestSuite, to_xml_report_string
 from ._junit_decorator import JunitDecorator
 
 
-class SuiteNotExistError(KeyError):
-    """ Test Suite decorator name is not exists in suites poll """
-
-
 class DuplicateSuiteError(KeyError):
     """ Test Suite decorator name is already exist in suites poll """
 
@@ -34,10 +30,8 @@ class JunitTestSuite(JunitDecorator):
     suite: Union[TestSuite, None]
 
     DEFAULT_REPORT_PATH_KEY = "JUNIT_REPORT_DIR"
-    FAIL_ON_MISSING_SUITE_KEY = "FAIL_ON_MISSING_SUITE"
 
     XML_REPORT_FORMAT = "junit_{suite_name}_report{args}.xml"
-    FAIL_ON_MISSING_SUITE = os.getenv(FAIL_ON_MISSING_SUITE_KEY, "False").lower() in ["true", "1", "yes", "y"]
 
     def __init__(self, report_dir: Path = None):
         """
@@ -99,9 +93,6 @@ class JunitTestSuite(JunitDecorator):
         """
         if cls.is_suite_exist(suite_func):
             cls._add_case(cls.get_suite(suite_func), test_data)
-        else:
-            if cls.FAIL_ON_MISSING_SUITE:
-                raise SuiteNotExistError(f"Can't find suite named {suite_func} for {test_data} test case")
 
     def _register(self):
         if self._func in JunitTestSuite._junit_suites:

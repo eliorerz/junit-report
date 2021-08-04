@@ -1,6 +1,7 @@
 import inspect
 import time
 import traceback
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Tuple, Union
 
@@ -105,12 +106,10 @@ class JunitTestCase(JunitDecorator):
         collect its parameters and record them into the test case.
         :return: Wrapped Suite function instance
         """
-        try:
+        with suppress(AttributeError):
             suite_func = self._get_suite()
             return suite_func
-        except AttributeError:
-            if JunitTestSuite.FAIL_ON_MISSING_SUITE:
-                raise
+
         return None
 
     def _get_suite(self):

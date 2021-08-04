@@ -75,3 +75,4 @@ class TestSomeThing:
 | Variable                    | Description                                                                                                                                 |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | JUNIT_REPORT_DIR            | Reports directory where the reports will be extracted. If it does not exist - create it.                                                        |
+| FAIL_ON_MISSING_SUITE       | Decide whether the test will throw a SuiteNotExistError exception if a JunitTestCase does not have a suite parent. <br/> Available values: 'True', 'true', 'y', 'Y', '1'                                                 |

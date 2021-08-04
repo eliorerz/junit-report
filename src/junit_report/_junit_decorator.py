@@ -1,23 +1,14 @@
 import inspect
 import re
-import time
 from abc import ABC, abstractmethod
-from contextlib import suppress
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable
 
 import decorator
-import pytest
-
-from ._test_case_data import MainRunner
 
 
 class JunitDecorator(ABC):
     def __init__(self) -> None:
         self._func = None
-        self._start_time = None
-        self._stack_locals = list()
-        self._pytest_function = None
-        self._main_runner = MainRunner.NONE
 
     def __call__(self, function: Callable) -> Callable:
         """
@@ -45,8 +36,7 @@ class JunitDecorator(ABC):
         except BaseException as e:
             self._on_exception(e)
         finally:
-            with suppress(BaseException):
-                self._on_wrapper_end()
+            self._on_wrapper_end()
         return value
 
     def _get_class_name(self) -> str:
@@ -63,11 +53,10 @@ class JunitDecorator(ABC):
             return module.__name__
 
     @abstractmethod
-    def _on_wrapper_end(self) -> bool:
+    def _on_wrapper_end(self) -> None:
         """
         Executed after execution finished (successfully or not)
-        :return: if success return True, else return False
-        :raises None - this function must not raise exception
+        :return: None
         """
 
     def _on_call(self) -> None:
@@ -99,20 +88,3 @@ class JunitDecorator(ABC):
         This function executed when wrapper function starts
         :return: None
         """
-        self._start_time = time.time()
-        self._stack_locals = [frame_info.frame.f_locals for frame_info in inspect.stack()]
-        try:
-            self._pytest_function = [
-                stack_local
-                for stack_local in self._stack_locals
-                if "self" in stack_local and isinstance(stack_local["self"], pytest.Function)][0]["self"]
-            self._main_runner = MainRunner.PYTEST
-        except IndexError:
-            self._main_runner = MainRunner.PYTHON
-
-    def get_pytest_parameterized(self, pytest_function: pytest.Function) -> List[Tuple[str, Any]]:
-        return (
-            list(sorted(pytest_function.callspec.params.items()))
-            if pytest_function and pytest_function.own_markers
-            else list()
-        )

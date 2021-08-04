@@ -1,14 +1,15 @@
 import datetime
 import os
-import traceback
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Dict, List, Tuple, Union
+from typing import Callable, ClassVar, Dict, List, Union
 
-import pytest
 from junit_xml import TestCase, TestSuite, to_xml_report_string
 
 from ._junit_decorator import JunitDecorator
-from ._test_case_data import CaseFailure, TestCaseCategories, TestCaseData, is_case_exception_already_raised
+
+
+class SuiteNotExistError(KeyError):
+    """ Test Suite decorator name is not exists in suites poll """
 
 
 class DuplicateSuiteError(KeyError):
@@ -33,14 +34,14 @@ class JunitTestSuite(JunitDecorator):
     suite: Union[TestSuite, None]
 
     DEFAULT_REPORT_PATH_KEY = "JUNIT_REPORT_DIR"
-    SUITE_TEST_CASE_MESSAGE_PREFIX = "[SUITE EXCEPTION]"  # Exception on suite (without test case)
+    FAIL_ON_MISSING_SUITE_KEY = "FAIL_ON_MISSING_SUITE"
 
     XML_REPORT_FORMAT = "junit_{suite_name}_report{args}.xml"
+    FAIL_ON_MISSING_SUITE = os.getenv(FAIL_ON_MISSING_SUITE_KEY, "False").lower() in ["true", "1", "yes", "y"]
 
-    def __init__(self, report_dir: Path = None, custom_filename: str = None):
+    def __init__(self, report_dir: Path = None):
         """
         :param report_dir: Target directory, created if not exists
-        :param custom_filename: If set, xml report will set to <exported_filename>.xml
         """
         super().__init__()
         self._report_dir = self.get_report_dir(report_dir)
@@ -48,8 +49,6 @@ class JunitTestSuite(JunitDecorator):
         self.suite = None
         self._timestamp = datetime.datetime.now()
         self._has_uncollected_fixtures = False
-        self._custom_filename = custom_filename
-        self._self_test_case = None
 
     def _on_call(self):
         self._register()
@@ -59,14 +58,6 @@ class JunitTestSuite(JunitDecorator):
             name=f"{self._get_class_name()}_{self.name}", test_cases=self._get_cases(), timestamp=self._timestamp
         )
         self._export(self.suite)
-
-    @classmethod
-    def get_report_file_name(cls, suite_name: str, args: str = None, custom_filename: str = None):
-        if custom_filename:
-            return f"{custom_filename}.xml"
-        if args:
-            return cls.XML_REPORT_FORMAT.format(suite_name=suite_name, args=f"[{args}]")
-        return cls.XML_REPORT_FORMAT.format(suite_name=suite_name, args="")
 
     @classmethod
     def get_suite(cls, suite_key: Callable) -> Union["JunitTestSuite", None]:
@@ -99,7 +90,7 @@ class JunitTestSuite(JunitDecorator):
         return suite_func in cls._junit_suites
 
     @classmethod
-    def register_case(cls, test_data: TestCaseData, suite_func: Callable) -> None:
+    def register_case(cls, test_data, suite_func: Callable) -> None:
         """
         Register test case to the relevant test suite
         :param test_data: TestCaseData instance
@@ -107,10 +98,10 @@ class JunitTestSuite(JunitDecorator):
         :return: None
         """
         if cls.is_suite_exist(suite_func):
-            suite = cls.get_suite(suite_func)
-            cls._add_case(suite, test_data)
-            if test_data.is_inside_fixture and test_data.had_exception:
-                suite._on_wrapper_end()
+            cls._add_case(cls.get_suite(suite_func), test_data)
+        else:
+            if cls.FAIL_ON_MISSING_SUITE:
+                raise SuiteNotExistError(f"Can't find suite named {suite_func} for {test_data} test case")
 
     def _register(self):
         if self._func in JunitTestSuite._junit_suites:
@@ -118,8 +109,6 @@ class JunitTestSuite(JunitDecorator):
         JunitTestSuite._junit_suites[self._func] = self
 
     def _get_cases(self):
-        if self._self_test_case:
-            return [data.case for data in self._cases] + [self._self_test_case]
         return [data.case for data in self._cases]
 
     def _add_case(self, test_data):
@@ -127,24 +116,18 @@ class JunitTestSuite(JunitDecorator):
             self._has_uncollected_fixtures = True
         return self._cases.append(test_data)
 
-    def _get_parametrize_as_str(self) -> str:
+    def _get_parametrize_values(self) -> str:
         """
         In case of pytest parametrize, this function collect and return parametrizes values
         :return: underscore separated parametrize values
         """
-        parameterize = self.get_pytest_parameterized(self._pytest_function)
-        if parameterize:
-            return "_".join(str(tup[1]) for tup in parameterize)
-        return ""
-
-    def get_pytest_parameterized(self, pytest_function: pytest.Function) -> List[Tuple[str, Any]]:
-        parameterized = list()
-        if len(self._cases) == 0:
-            return self._get_parameterized_on_no_cases()
-        test_cases = [test_case_data for test_case_data in self._cases if test_case_data.parametrize]
+        values = ""
+        test_cases = [test_case_data for test_case_data in self._cases if test_case_data.parametrize is not None]
         if test_cases:
-            parameterized = [k for k in set([c.get_case_key() for c in test_cases if len(c.get_case_key()) > 0]).pop()]
-        return parameterized
+            marks = {c.get_case_key() for c in self._cases if len(c.get_case_key()) > 0}
+            if marks:
+                values = "_".join([str(tup[1]) for tup in marks.pop()])
+        return values
 
     def _export(self, suite: TestSuite) -> None:
         """
@@ -156,10 +139,8 @@ class JunitTestSuite(JunitDecorator):
             return
 
         if not self._has_uncollected_fixtures:
-            values = self._get_parametrize_as_str()
-            path = self._report_dir.joinpath(
-                self.get_report_file_name(suite_name=suite.name, args=values, custom_filename=self._custom_filename)
-            )
+            values = self._get_parametrize_values()
+            path = self._report_dir.joinpath(self.XML_REPORT_FORMAT.format(suite_name=suite.name, args=values))
             xml_string = to_xml_report_string([suite])
 
             os.makedirs(self._report_dir, exist_ok=True)
@@ -194,29 +175,3 @@ class JunitTestSuite(JunitDecorator):
         """
         self._has_uncollected_fixtures = False
         self._export(self.suite)
-
-    def _on_exception(self, e: BaseException):
-        if is_case_exception_already_raised(e):
-            raise e
-
-        self._handle_in_suite_exception(e)
-
-    def _handle_in_suite_exception(self, exception: BaseException):
-        self._self_test_case = TestCase(
-            name=self._func.__name__, classname=self._get_class_name(), category=TestCaseCategories.FUNCTION.value
-        )
-        data = TestCaseData(_start_time=self._start_time, case=self._self_test_case, _func=self._func)
-        message = "[SUITE EXCEPTION] " + str(exception)
-        failure = CaseFailure(message=message, output=traceback.format_exc(), type=exception.__class__.__name__)
-        data.case.failures.append(failure)
-        raise
-
-    def _get_parameterized_on_no_cases(self) -> List[Tuple[str, Any]]:
-        for f_locals in [stack_local for stack_local in self._stack_locals if "pyfuncitem" in stack_local]:
-            pytest_func = f_locals["pyfuncitem"]
-            if hasattr(self._func, "pytestmark"):
-                parameterized = [m.args[0] for m in self._func.pytestmark if m.name == "parametrize"]
-                if isinstance(pytest_func, pytest.Function) and parameterized:
-                    return sorted(list({k: v for k, v in pytest_func.funcargs.items() if k in parameterized}.items()))
-
-        return []

@@ -68,3 +68,7 @@ class TestCaseData:
 
 def is_case_exception_already_raised(exception: BaseException) -> bool:
     return hasattr(exception, JUNIT_EXCEPTION_ON_TAG)
+
+
+def mark_case_exception_as_raised(exception: BaseException):
+    setattr(exception, JUNIT_EXCEPTION_ON_TAG, True)

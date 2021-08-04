@@ -72,7 +72,6 @@ class JunitFixtureTestCase(JunitTestCase):
         success = super(JunitFixtureTestCase, self)._on_wrapper_end()
         if not success:
             return success
-        if len(self._case_data.case.failures) > 0:
-            JunitTestSuite.collect_all()
+        JunitTestSuite.collect_all()
 
         return success

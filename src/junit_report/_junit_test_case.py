@@ -8,7 +8,8 @@ from junit_xml import TestCase
 from . import _utils
 from ._junit_decorator import JunitDecorator
 from ._junit_test_suite import JunitTestSuite
-from ._test_case_data import CaseFailure, TestCaseCategories, TestCaseData, is_case_exception_already_raised
+from ._test_case_data import CaseFailure, TestCaseCategories, TestCaseData, is_case_exception_already_raised, \
+    mark_case_exception_as_raised
 
 
 class JunitTestCase(JunitDecorator):
@@ -47,7 +48,7 @@ class JunitTestCase(JunitDecorator):
         self._case_data.had_exception = True
         if is_case_exception_already_raised(e):
             raise  # already registered on son test case
-        setattr(e, "__is_junit_exception__", True)
+        mark_case_exception_as_raised(e)
         self._add_failure(e)
         raise e
 

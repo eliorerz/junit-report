@@ -9,13 +9,6 @@ class TestPytestModule(_TestExternal):
         )
         self.base_flow(test, expected_suite_name)
 
-    def test_custom_filename(self):
-        test = "external_tests/module_tests/_test_junit_report_fixtures_with_custom_report_name.py"
-        expected_suite_name = "some_test_with_one_fixture"
-        expected_other_suite_name = "another_test_with_no_fixtures11"
-
-        self.expected_filename(test, expected_suite_name, expected_other_suite_name)
-
     def test_module_multiple_fixtures(self):
         test = "external_tests/module_tests/_test_junit_report_module_multiple_fixtures.py"
         expected_suite_name = (
@@ -66,12 +59,8 @@ class TestPytestModule(_TestExternal):
         second_suite_name = (
             "tests.external_tests.module_tests._test_junit_report_nested_test_case_test_suite_nested_fixture_wrong_type"
         )
-        third_suite_name = (
-            "tests.external_tests.module_tests._test_junit_report_nested_test_case_test_suite"
-            "_nested_test_case_exception"
-        )
 
-        self.nested_test_case(test, "module", first_suite_name, second_suite_name, third_suite_name)
+        self.nested_test_case(test, "module", first_suite_name, second_suite_name)
 
     def test_fixture_raise_exception_after_yield(self):
         test = "external_tests/module_tests/_test_junit_report_fixture_raise_exception_after_yield.py"
@@ -86,23 +75,3 @@ class TestPytestModule(_TestExternal):
         test = "external_tests/module_tests/_test_junit_report_test_cases_without_suite.py"
         report_name = "unittest.xml"
         self.pytest_suite_no_junit_suite(test, report_name)
-
-    def test_suite_no_cases_with_exception(self):
-        file = "_test_junit_report_not_test_case_with_exception"
-        test = f"external_tests/module_tests/{file}.py"
-        first_suite_name = f"tests.external_tests.module_tests.{file}_test_suite_no_cases_with_exception_parametrize"
-        second_suite_name = (
-            f"tests.external_tests.module_tests.{file}_" f"test_suite_no_cases_with_exception"
-        )
-
-        self.junit_report_suite_no_cases_with_exception(test, first_suite_name, second_suite_name)
-
-    def test_suite_cases_raise_inside_exception(self):
-        test = "external_tests/module_tests/_test_junit_report_test_case_raise_inside_fixture.py"
-        first_suite_name = (
-            "tests.external_tests.module_tests._test_junit_report_test_case_raise_"
-            "inside_fixture_test_suite_raise_before_yield"
-        )
-        second_suite_name = "tests.external_tests.module_tests._test_suite_raise_after_yield"
-
-        self.junit_report_cases_raise_inside_exception(test, first_suite_name, second_suite_name)

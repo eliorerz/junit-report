@@ -54,15 +54,3 @@ class TestJunitNestedTestCase(TestJunitNestedBaseTestCase):
     @JunitTestCase()
     def third_test_case(self):
         pass
-
-    @JunitTestSuite(REPORT_DIR)
-    def test_suite_nested_test_case_exception(self):
-        self.other_nested_test_case()
-
-    @JunitTestCase()
-    def other_nested_test_case(self):
-        self.exception_test_case()
-
-    @JunitTestCase()
-    def exception_test_case(self):
-        raise OSError("OSOSOSOS")

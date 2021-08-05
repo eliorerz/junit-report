@@ -35,9 +35,10 @@ class JunitTestSuite(JunitDecorator):
 
     XML_REPORT_FORMAT = "junit_{suite_name}_report{args}.xml"
 
-    def __init__(self, report_dir: Path = None):
+    def __init__(self, report_dir: Path = None, custom_filename: str = None):
         """
         :param report_dir: Target directory, created if not exists
+        :param custom_filename: If set, xml report will set to <exported_filename>.xml
         """
         super().__init__()
         self._report_dir = self.get_report_dir(report_dir)
@@ -46,6 +47,7 @@ class JunitTestSuite(JunitDecorator):
         self._timestamp = datetime.datetime.now()
         self._has_uncollected_fixtures = False
         self._self_test_case = None
+        self._custom_filename = custom_filename
 
     def _on_call(self):
         self._register()
@@ -55,6 +57,14 @@ class JunitTestSuite(JunitDecorator):
             name=f"{self._get_class_name()}_{self.name}", test_cases=self._get_cases(), timestamp=self._timestamp
         )
         self._export(self.suite, force)
+
+    @classmethod
+    def get_report_file_name(cls, suite_name: str, args: str = None, custom_filename: str = None):
+        if custom_filename:
+            return f"{custom_filename}.xml"
+        if args:
+            return cls.XML_REPORT_FORMAT.format(suite_name=suite_name, args=f"[{args}]")
+        return cls.XML_REPORT_FORMAT.format(suite_name=suite_name, args="")
 
     @classmethod
     def get_suite(cls, suite_key: Callable) -> Union["JunitTestSuite", None]:
@@ -133,7 +143,9 @@ class JunitTestSuite(JunitDecorator):
 
         if not self._has_uncollected_fixtures or force:
             values = self._get_parametrize_as_str()
-            path = self._report_dir.joinpath(self.XML_REPORT_FORMAT.format(suite_name=suite.name, args=values))
+            path = self._report_dir.joinpath(
+                self.get_report_file_name(suite_name=suite.name, args=values, custom_filename=self._custom_filename)
+            )
             xml_string = to_xml_report_string([suite])
 
             os.makedirs(self._report_dir, exist_ok=True)

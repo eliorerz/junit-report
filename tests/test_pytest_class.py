@@ -70,3 +70,10 @@ class TestWithPytestDecorators(_TestExternal):
         second_suite_name = "TestJunitSuiteNoCases_test_suite_test_case_inside_fixture_with_exception"
 
         self.junit_report_missing_cases_when_inside_fixture(test, first_suite_name, second_suite_name)
+
+    def test_custom_filename(self):
+        test = "external_tests/class_tests/_test_junit_report_with_custom_report_name.py"
+        expected_suite_name = "some_test_with_one_fixture"
+        expected_other_suite_name = "another_test_with_no_fixtures11"
+
+        self.expected_filename(test, expected_suite_name, expected_other_suite_name)

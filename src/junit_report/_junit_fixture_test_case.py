@@ -22,8 +22,6 @@ class JunitFixtureTestCase(JunitTestCase):
 
     _generator: Union[GeneratorType, None]
 
-    AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX = "[TEARDOWN EXCEPTION]"
-
     def __init__(self) -> None:
         super().__init__()
         self._generator = None
@@ -38,7 +36,8 @@ class JunitFixtureTestCase(JunitTestCase):
                 if self._generator:
                     self._teardown_yield_fixture(self._generator)
             except BaseException as e:
-                self._add_failure(e, self.AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX)
+                self._data.case.category = TestCaseCategories.FIXTURE_TEARDOWN.value
+                self._add_failure(e)
                 raise
             finally:
                 JunitTestSuite.fixture_cleanup(self._data, self.get_suite_key())

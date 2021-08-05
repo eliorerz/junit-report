@@ -11,7 +11,7 @@ import pytest
 import xmltodict
 from _pytest.config import ExitCode
 
-from src.junit_report import JunitFixtureTestCase, JunitTestSuite, TestCaseCategories
+from src.junit_report import JunitTestSuite, TestCaseCategories
 
 try:
     os.chdir(Path().cwd().joinpath("tests"))
@@ -32,11 +32,15 @@ class BaseTest:
         errors=0,
         fixtures_count=0,
         functions_count=0,
+        teardown_count=0,
+        suite_exception_count=0,
     ) -> List[OrderedDict]:
         cases = cls.assert_xml_report_results(xml_results, testsuite_tests, testsuite_name, failures, errors)
 
         assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE.value]) == fixtures_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE_TEARDOWN.value]) == teardown_count
         assert len([c for c in cases if c["@class"] == TestCaseCategories.FUNCTION.value]) == functions_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.SUITE.value]) == suite_exception_count
         return cases
 
     @staticmethod
@@ -305,8 +309,9 @@ class _TestExternal(ExternalBaseTest):
 
     def fixture_raise_exception_after_yield(self, test_name: str, expected_suite_name: str):
         expected_case_count = 2
-        expected_fixtures_count = 2
+        expected_fixtures_count = 1
         expected_failures = 1
+        expected_fixture_teardown_count = 1
 
         exit_code, _ = self.execute_test(test_name)
         assert exit_code == ExitCode.TESTS_FAILED
@@ -314,10 +319,11 @@ class _TestExternal(ExternalBaseTest):
         cases = self.assert_xml_report_results_with_cases(
             xml_results,
             failures=expected_failures,
-            testsuite_tests=expected_fixtures_count + expected_case_count,
+            testsuite_tests=expected_fixtures_count + expected_case_count + expected_fixture_teardown_count,
             testsuite_name=expected_suite_name,
             fixtures_count=expected_fixtures_count,
             functions_count=expected_case_count,
+            teardown_count=expected_fixture_teardown_count
         )
 
         expected_fixture_name = "fixture_with_exception_after_yield"
@@ -329,7 +335,6 @@ class _TestExternal(ExternalBaseTest):
         failed_case = failed_cases[0]
         assert failed_case["@name"] == expected_fixture_name
         assert failed_case["failure"]["@type"] == ValueError.__name__
-        assert failed_case["failure"]["@message"].startswith(JunitFixtureTestCase.AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX)
 
     def pytest_suite_no_junit_suite(self, test_name: str, report_name: str):
         parametrize_count = 5
@@ -361,33 +366,36 @@ class _TestExternal(ExternalBaseTest):
             for v in lst:
                 parametrize.append((k, v))
 
-        tests = {first_suite_name: (1, 0, 1),
-                 third_suite_name: (3, 0, 1),
-                 fourth_suite_name: (3, 0, 1),
-                 fifth_suite_name: (2, 1, 1)}
+        tests = {first_suite_name: (0, 0, 1, 1),
+                 third_suite_name: (2, 0, 1, 1),
+                 fourth_suite_name: (2, 0, 1, 1),
+                 fifth_suite_name: (1, 1, 1, 1)}
         for test, params in tests.items():
-            expected_case_count, expected_fixtures_count, expected_failures = params
+            expected_case_count, expected_fixtures_count, expected_failures, expected_suite_case_count = params
 
             for tup in parametrize:
                 xml_results = self.get_test_report(suite_name=test, args=str(tup[1]))
                 self.assert_xml_report_results_with_cases(
                     xml_results,
                     failures=expected_failures,
-                    testsuite_tests=expected_case_count + expected_fixtures_count,
+                    testsuite_tests=expected_case_count + expected_fixtures_count + expected_suite_case_count,
                     testsuite_name=test,
                     fixtures_count=expected_fixtures_count,
                     functions_count=expected_case_count,
+                    suite_exception_count=expected_suite_case_count
                 )
 
-        expected_case_count = 1
+        expected_case_count = 0
         expected_fixtures_count = 0
         expected_failures = 1
+        expected_suite_case_count = 1
         xml_results = self.get_test_report(suite_name=second_suite_name)
         self.assert_xml_report_results_with_cases(
             xml_results,
             failures=expected_failures,
-            testsuite_tests=expected_case_count,
+            testsuite_tests=expected_case_count + expected_suite_case_count,
             testsuite_name=second_suite_name,
             fixtures_count=expected_fixtures_count,
             functions_count=expected_case_count,
+            suite_exception_count=expected_suite_case_count
         )

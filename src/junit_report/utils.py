@@ -9,8 +9,10 @@ from junit_xml import TestCase
 
 
 class TestCaseCategories(Enum):
+    SUITE = "suite-function"
     FUNCTION = "function"
     FIXTURE = "fixture"
+    FIXTURE_TEARDOWN = "fixture-teardown"
 
 
 @dataclass

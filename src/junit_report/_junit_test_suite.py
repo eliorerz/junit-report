@@ -50,11 +50,11 @@ class JunitTestSuite(JunitDecorator):
     def _on_call(self):
         self._register()
 
-    def _on_wrapper_end(self):
+    def _on_wrapper_end(self, force=False):
         self.suite = TestSuite(
             name=f"{self._get_class_name()}_{self.name}", test_cases=self._get_cases(), timestamp=self._timestamp
         )
-        self._export(self.suite)
+        self._export(self.suite, force)
 
     @classmethod
     def get_suite(cls, suite_key: Callable) -> Union["JunitTestSuite", None]:
@@ -74,13 +74,13 @@ class JunitTestSuite(JunitDecorator):
         return report_dir
 
     @classmethod
-    def collect_all(cls):
+    def collect_all(cls, force=False):
         """
         Collect all junit test suites reports from external source
         :return: None
         """
         for junit_suite in cls._junit_suites.values():
-            cls._on_wrapper_end(self=junit_suite)
+            cls._on_wrapper_end(self=junit_suite, force=force)
 
     @classmethod
     def is_suite_exist(cls, suite_func: Callable):
@@ -122,7 +122,7 @@ class JunitTestSuite(JunitDecorator):
             return "_".join(str(tup[1]) for tup in parameterize)
         return ""
 
-    def _export(self, suite: TestSuite) -> None:
+    def _export(self, suite: TestSuite, force=False) -> None:
         """
         Export test suite to JUnit xml file
         :param suite: TestSuite to export
@@ -131,7 +131,7 @@ class JunitTestSuite(JunitDecorator):
         if len(suite.test_cases) == 0:
             return
 
-        if not self._has_uncollected_fixtures:
+        if not self._has_uncollected_fixtures or force:
             values = self._get_parametrize_as_str()
             path = self._report_dir.joinpath(self.XML_REPORT_FORMAT.format(suite_name=suite.name, args=values))
             xml_string = to_xml_report_string([suite])
@@ -157,9 +157,9 @@ class JunitTestSuite(JunitDecorator):
         """
         junit_suite = cls.get_suite(suite_func)
         if junit_suite and junit_suite._cases:
-            first_fixture = junit_suite._cases[0].case
-            if first_fixture == test_data.case:
-                junit_suite._collect_yield()
+            for may_be_fixture in junit_suite._cases:
+                if may_be_fixture.case == test_data.case:
+                    return junit_suite._collect_yield()
 
     def _collect_yield(self):
         """

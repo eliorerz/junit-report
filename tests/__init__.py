@@ -24,14 +24,14 @@ REPORT_DIR = Path.cwd().joinpath(".reports")
 class BaseTest:
     @classmethod
     def assert_xml_report_results_with_cases(
-        cls,
-        xml_results: dict,
-        testsuite_tests: int,
-        testsuite_name: str,
-        failures=0,
-        errors=0,
-        fixtures_count=0,
-        functions_count=0,
+            cls,
+            xml_results: dict,
+            testsuite_tests: int,
+            testsuite_name: str,
+            failures=0,
+            errors=0,
+            fixtures_count=0,
+            functions_count=0,
     ) -> List[OrderedDict]:
         cases = cls.assert_xml_report_results(xml_results, testsuite_tests, testsuite_name, failures, errors)
 
@@ -41,11 +41,11 @@ class BaseTest:
 
     @staticmethod
     def assert_xml_report_results(
-        xml_results: dict,
-        testsuite_tests: int,
-        testsuite_name: str,
-        failures=0,
-        errors=0,
+            xml_results: dict,
+            testsuite_tests: int,
+            testsuite_name: str,
+            failures=0,
+            errors=0,
     ) -> List[OrderedDict]:
         assert "testsuites" in xml_results
         assert int(xml_results["testsuites"]["@failures"]) == failures
@@ -157,7 +157,7 @@ class _TestExternal(ExternalBaseTest):
         assert "KeyError: 'Invalid fixture'" in nested_test_case["failure"]["#text"]
 
     def multiple_fixtures_with_parametrize(
-        self, test_name: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
+            self, test_name: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
     ):
         version = {"version": ["5.1", "6.21980874565", 6.5, "some__long_string_that_is_not_a_number"]}
         letter = {"letter": ["A", "B", "C"]}
@@ -292,16 +292,23 @@ class _TestExternal(ExternalBaseTest):
             fixtures_count=expected_fixtures_count,
             functions_count=expected_case_count,
         )
+        version = {"version": ["5.1", "2.3", "5.01", "1.3.5", "5.1", "2.3", "48.1d", "2.3", 100, "250"]}
+        second_args = dict(**version)
+        parametrize = list()
+        for k, lst in second_args.items():
+            for v in lst:
+                parametrize.append((k, v))
 
-        xml_results = self.get_test_report(suite_name=second_suite_name)
-        self.assert_xml_report_results_with_cases(
-            xml_results,
-            failures=expected_failures,
-            testsuite_tests=expected_fixtures_count,
-            testsuite_name=second_suite_name,
-            fixtures_count=expected_fixtures_count,
-            functions_count=expected_case_count,
-        )
+        for tup in parametrize:
+            xml_results = self.get_test_report(suite_name=second_suite_name, args=str(tup[1]))
+            self.assert_xml_report_results_with_cases(
+                xml_results,
+                failures=expected_failures,
+                testsuite_tests=expected_fixtures_count,
+                testsuite_name=second_suite_name,
+                fixtures_count=expected_fixtures_count,
+                functions_count=expected_case_count,
+            )
 
     def fixture_raise_exception_after_yield(self, test_name: str, expected_suite_name: str):
         expected_case_count = 2
@@ -391,3 +398,25 @@ class _TestExternal(ExternalBaseTest):
             fixtures_count=expected_fixtures_count,
             functions_count=expected_case_count,
         )
+
+    def junit_report_missing_cases_when_inside_fixture(
+            self,
+            test_name: str,
+            first_suite_name: str,
+            second_suite_name: str
+    ):
+        exit_code, _ = self.execute_test(test_name)
+        assert exit_code == ExitCode.TESTS_FAILED
+
+        tests = {first_suite_name: (2, 1, 0), second_suite_name: (1, 1, 1)}
+        for test, args in tests.items():
+            expected_case_count, expected_fixtures_count, expected_failures = args
+            xml_results = self.get_test_report(suite_name=test)
+            self.assert_xml_report_results_with_cases(
+                xml_results,
+                failures=expected_failures,
+                testsuite_tests=expected_fixtures_count + expected_case_count,
+                testsuite_name=test,
+                fixtures_count=expected_fixtures_count,
+                functions_count=expected_case_count,
+            )

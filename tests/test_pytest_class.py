@@ -63,3 +63,10 @@ class TestWithPytestDecorators(_TestExternal):
 
         self.junit_report_inner_suite_exception(test, first_suite_name, second_suite_name, third_suite_name,
                                                 fourth_suite_name, fifth_suite_name)
+
+    def test_missing_cases_when_inside_fixture(self):
+        test = "external_tests/class_tests/_test_junit_report_missing_cases_when_inside_fixture.py"
+        first_suite_name = "TestJunitSuiteNoCases_test_suite_test_case_inside_fixture"
+        second_suite_name = "TestJunitSuiteNoCases_test_suite_test_case_inside_fixture_with_exception"
+
+        self.junit_report_missing_cases_when_inside_fixture(test, first_suite_name, second_suite_name)

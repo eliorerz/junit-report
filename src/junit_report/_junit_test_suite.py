@@ -176,10 +176,9 @@ class JunitTestSuite(JunitDecorator):
         self._handle_in_suite_exception(e)
 
     def _handle_in_suite_exception(self, exception: BaseException):
-        self._self_test_case = Utils.get_new_test_case(self._func, self._get_class_name(), TestCaseCategories.FUNCTION)
+        self._self_test_case = Utils.get_new_test_case(self._func, self._get_class_name(), TestCaseCategories.SUITE)
 
         case_data = TestCaseData(_start_time=self._start_time, case=self._self_test_case, _func=self._func)
-        message = "[SUITE EXCEPTION] " + str(exception)
-        failure = CaseFailure(message=message, output=traceback.format_exc(), type=exception.__class__.__name__)
+        failure = CaseFailure(message=str(exception), output=traceback.format_exc(), type=exception.__class__.__name__)
         case_data.case.failures.append(failure)
         raise exception

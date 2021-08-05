@@ -24,16 +24,16 @@ REPORT_DIR = Path.cwd().joinpath(".reports")
 class BaseTest:
     @classmethod
     def assert_xml_report_results_with_cases(
-        cls,
-        xml_results: dict,
-        testsuite_tests: int,
-        testsuite_name: str,
-        failures=0,
-        errors=0,
-        fixtures_count=0,
-        functions_count=0,
-        teardown_count=0,
-        suite_exception_count=0,
+            cls,
+            xml_results: dict,
+            testsuite_tests: int,
+            testsuite_name: str,
+            failures=0,
+            errors=0,
+            fixtures_count=0,
+            functions_count=0,
+            teardown_count=0,
+            suite_exception_count=0,
     ) -> List[OrderedDict]:
         cases = cls.assert_xml_report_results(xml_results, testsuite_tests, testsuite_name, failures, errors)
 
@@ -45,11 +45,11 @@ class BaseTest:
 
     @staticmethod
     def assert_xml_report_results(
-        xml_results: dict,
-        testsuite_tests: int,
-        testsuite_name: str,
-        failures=0,
-        errors=0,
+            xml_results: dict,
+            testsuite_tests: int,
+            testsuite_name: str,
+            failures=0,
+            errors=0,
     ) -> List[OrderedDict]:
         assert "testsuites" in xml_results
         assert int(xml_results["testsuites"]["@failures"]) == failures
@@ -161,7 +161,7 @@ class _TestExternal(ExternalBaseTest):
         assert "KeyError: 'Invalid fixture'" in nested_test_case["failure"]["#text"]
 
     def multiple_fixtures_with_parametrize(
-        self, test_name: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
+            self, test_name: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
     ):
         version = {"version": ["5.1", "6.21980874565", 6.5, "some__long_string_that_is_not_a_number"]}
         letter = {"letter": ["A", "B", "C"]}

@@ -55,7 +55,7 @@ class TestCaseData:
 
     def set_parametrize(self, params: List[Tuple[str, Any]]):
         self.parametrize = params
-        self.case.name += f'({", ".join([f"{p[0]}={p[1]}" for p in params])})'
+        self.case.name += f'[{", ".join([f"{p[0]}={p[1]}" for p in params])}]'
 
     def set_parent(self, case_parent_name: str):
         self._has_parent = True

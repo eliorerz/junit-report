@@ -80,10 +80,10 @@ class ExternalBaseTest(BaseTest):
         JunitTestSuite._junit_suites = dict()
 
     @classmethod
-    def get_test_report(cls, suite_name: str, args="") -> OrderedDict:
+    def get_test_report(cls, suite_name: str, args="", custom_filename: str = None) -> OrderedDict:
         if not suite_name.endswith(".xml"):
             test_report_path = REPORT_DIR.joinpath(
-                JunitTestSuite.XML_REPORT_FORMAT.format(suite_name=suite_name, args=args)
+                JunitTestSuite.get_report_file_name(suite_name=suite_name, args=args, custom_filename=custom_filename)
             )
         else:
             test_report_path = REPORT_DIR.joinpath(suite_name)
@@ -114,6 +114,12 @@ class _TestExternal(ExternalBaseTest):
             fixtures_count=1,
             functions_count=2,
         )
+
+    def expected_filename(self, test_name: str, expected_suite_name: str, expected_other_suite_name: str):
+        exit_code, _ = self.execute_test(test_name)
+        assert exit_code == ExitCode.OK
+        assert self.get_test_report(suite_name=expected_suite_name, custom_filename=expected_suite_name)
+        assert self.get_test_report(suite_name=expected_other_suite_name, custom_filename=expected_other_suite_name)
 
     def multiple_fixtures(self, test_name: str, expected_suite_name: str):
         exit_code, _ = self.execute_test(test_name)

@@ -64,47 +64,6 @@ class JunitTestCase(JunitDecorator):
 
         return None
 
-    # def _get_suite(self):
-    #     suite_arguments = dict()
-    #     suite_func = None
-    #
-    #     for f_locals in [
-    #         stack_local for stack_local in self._stack_locals if "function" in stack_local and "self" in stack_local
-    #     ]:
-    #         suite = f_locals["self"]
-    #         if isinstance(suite, JunitTestCase) and f_locals["function"].__name__ != self.name:
-    #             if not self._data.has_parent:
-    #                 self._data.set_parent(f_locals["function"].__name__)
-    #
-    #         if isinstance(suite, JunitTestSuite):
-    #             suite_func = f_locals["function"]
-    #             stack_keys = list(inspect.signature(suite_func).parameters.keys())
-    #             for stack in self._stack_locals:
-    #                 if all(key in stack for key in stack_keys):
-    #                     suite_arguments = stack
-    #                     break
-    #
-    #             self.__set_parametrize(suite_func, suite_arguments)
-    #             return suite_func
-    #
-    #     return suite_func
-    #
-    # def __set_parametrize(self, suite_func: Callable, suite_arguments: Dict[str, Any]):
-    #     """
-    #     Grab and set current JunitTestCase parametrize values
-    #     :param suite_func: Parametrize wrapped suite function
-    #     :param suite_arguments: Arguments passed to the function
-    #     :return:
-    #     """
-    #     if hasattr(suite_func, "pytestmark"):
-    #         params = list()
-    #         marks = [m for m in suite_func.pytestmark if m.name == "parametrize"]
-    #
-    #         for i in range(len(marks)):
-    #             arg = marks[len(marks) - i - 1].args[0]
-    #             params.append((arg, suite_arguments[arg]))
-    #         self._data.set_parametrize(params)
-
     def _set_parameterized(self, pytest_function: pytest.Function, parameterized: List = None):
         if not parameterized:
             parameterized = PytestUtils.get_case_pytest_parameterized(pytest_function)
@@ -127,8 +86,9 @@ class JunitTestCase(JunitDecorator):
         if suite_func is None:
             is_inside_fixture = True
             suite_func = PytestUtils.get_fixture_suite(pytest_function)
-            if hasattr(suite_func, "__parameterized__"):
-                self._set_parameterized(pytest_function, getattr(suite_func, "__parameterized__"))
+            fixture_params = PytestUtils.get_fixture_parameterized(pytest_function)
+            if fixture_params:
+                self._set_parameterized(pytest_function, fixture_params)
 
         self._data.is_inside_fixture = is_inside_fixture
         return suite_func

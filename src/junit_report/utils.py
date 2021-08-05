@@ -95,6 +95,7 @@ class Utils(ABC):
 
 class PytestUtils:
     PARAMETERIZED_KEY = "parametrize"
+    OWN_MARKERS_KEY = "own_markers"
 
     @classmethod
     def get_case_pytest_parameterized(cls, pytest_function: pytest.Function) -> List[Tuple[str, Any]]:
@@ -131,8 +132,8 @@ class PytestUtils:
     def get_fixture_suite(cls, func: pytest.Function):
         with suppress(AttributeError):
             # if pytest.mark.parametrize exist, get actual function from class while ignoring the add parameters
-            if hasattr(func, "own_markers") and len(func.own_markers) > 0:
-                mark_function = cls.get_fixture_mark_function(func.own_markers, func)
+            if hasattr(func, cls.OWN_MARKERS_KEY) and len(func.own_markers) > 0:
+                mark_function = cls.get_fixture_mark_function(func)
                 if mark_function:
                     return mark_function
             return Utils.get_wrapped_function(func)
@@ -155,20 +156,22 @@ class PytestUtils:
     def get_fixture_parameterized(cls, func: pytest.Function) -> List[Tuple]:
         args, marks = cls.get_fixture_data(func)
         marks_count = len(marks)
+        if not marks:
+            return []
+        args.pop(0)
         parameterized = list()
         for i in range(marks_count):
             parameterized.append((marks[i].args[0], args[i]))
         return parameterized
 
     @classmethod
-    def get_fixture_mark_function(cls, own_markers: List[Mark], func: pytest.Function) -> Union[Callable, None]:
+    def get_fixture_mark_function(cls, func: pytest.Function) -> Union[Callable, None]:
         """
         If mark parameterize decorate test suite with given fixture _get_mark_function is searching
         for all parametrize arguments and permutations.
         If mark type is parametrize, set self._parametrize with the current argument permutation.
         The representation of function name and arguments for N parametrize marks are as followed:
             func.name = some_func_name[param1-param2-...-paramN]
-        :param own_markers: Pytest markers taken from func stack_locals
         :param func: wrapped function contained with pytest Function object
         :return: wrapped function itself
         """
@@ -183,6 +186,4 @@ class PytestUtils:
         for i in range(marks_count):
             parameterized.append((marks[i].args[0], args[i]))
 
-        wrapped_func = Utils.get_wrapped_function(func, func_name)
-        wrapped_func.__parameterized__ = parameterized
-        return wrapped_func
+        return Utils.get_wrapped_function(func, func_name)

@@ -1,14 +1,23 @@
 import inspect
 import re
+import time
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from contextlib import suppress
+from typing import Any, Callable, Union, List, Dict
 
 import decorator
 
 
 class JunitDecorator(ABC):
+
+    _func: Union[Callable, None]
+    _start_time: Union[float, None]
+    _stack_locals: List[Dict[str, Any]]
+
     def __init__(self) -> None:
         self._func = None
+        self._start_time = None
+        self._stack_locals = list()
 
     def __call__(self, function: Callable) -> Callable:
         """
@@ -23,6 +32,12 @@ class JunitDecorator(ABC):
 
         return decorator.decorator(wrapper, function)
 
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__} {self.name}"
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__} {self.name}"
+
     @property
     def name(self):
         return self._func.__name__
@@ -30,13 +45,15 @@ class JunitDecorator(ABC):
     def _wrapper(self, function: Callable, *args, **kwargs):
         value = None
 
-        self._on_wrapper_start(function)
+        with suppress(BaseException):
+            self._on_wrapper_start(function)
         try:
             value = self._execute_wrapped_function(*args, **kwargs)
         except BaseException as e:
             self._on_exception(e)
         finally:
-            self._on_wrapper_end()
+            with suppress(BaseException):
+                self._on_wrapper_end()
         return value
 
     def _get_class_name(self) -> str:
@@ -88,3 +105,5 @@ class JunitDecorator(ABC):
         This function executed when wrapper function starts
         :return: None
         """
+        self._start_time = time.time()
+        self._stack_locals = [frame_info.frame.f_locals for frame_info in inspect.stack()]

@@ -11,7 +11,7 @@ import pytest
 import xmltodict
 from _pytest.config import ExitCode
 
-from src.junit_report import JunitFixtureTestCase, JunitTestSuite, TestCaseCategories
+from src.junit_report import JunitTestSuite, TestCaseCategories
 
 try:
     os.chdir(Path().cwd().joinpath("tests"))
@@ -24,28 +24,32 @@ REPORT_DIR = Path.cwd().joinpath(".reports")
 class BaseTest:
     @classmethod
     def assert_xml_report_results_with_cases(
-        cls,
-        xml_results: dict,
-        testsuite_tests: int,
-        testsuite_name: str,
-        failures=0,
-        errors=0,
-        fixtures_count=0,
-        functions_count=0,
+            cls,
+            xml_results: dict,
+            testsuite_tests: int,
+            testsuite_name: str,
+            failures=0,
+            errors=0,
+            fixtures_count=0,
+            functions_count=0,
+            teardown_count=0,
+            suite_exception_count=0,
     ) -> List[OrderedDict]:
         cases = cls.assert_xml_report_results(xml_results, testsuite_tests, testsuite_name, failures, errors)
 
-        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE]) == fixtures_count
-        assert len([c for c in cases if c["@class"] == TestCaseCategories.FUNCTION]) == functions_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE.value]) == fixtures_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE_TEARDOWN.value]) == teardown_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.FUNCTION.value]) == functions_count
+        assert len([c for c in cases if c["@class"] == TestCaseCategories.SUITE.value]) == suite_exception_count
         return cases
 
     @staticmethod
     def assert_xml_report_results(
-        xml_results: dict,
-        testsuite_tests: int,
-        testsuite_name: str,
-        failures=0,
-        errors=0,
+            xml_results: dict,
+            testsuite_tests: int,
+            testsuite_name: str,
+            failures=0,
+            errors=0,
     ) -> List[OrderedDict]:
         assert "testsuites" in xml_results
         assert int(xml_results["testsuites"]["@failures"]) == failures
@@ -58,6 +62,8 @@ class BaseTest:
         assert testsuite["@name"] == testsuite_name
 
         cases = testsuite["testcase"]
+        if isinstance(cases, OrderedDict):
+            return [cases]
         return cases
 
     @staticmethod
@@ -74,10 +80,10 @@ class ExternalBaseTest(BaseTest):
         JunitTestSuite._junit_suites = dict()
 
     @classmethod
-    def get_test_report(cls, suite_name: str, args="") -> OrderedDict:
+    def get_test_report(cls, suite_name: str, args="", custom_filename: str = None) -> OrderedDict:
         if not suite_name.endswith(".xml"):
             test_report_path = REPORT_DIR.joinpath(
-                JunitTestSuite.XML_REPORT_FORMAT.format(suite_name=suite_name, args=args)
+                JunitTestSuite.get_report_file_name(suite_name=suite_name, args=args, custom_filename=custom_filename)
             )
         else:
             test_report_path = REPORT_DIR.joinpath(suite_name)
@@ -108,6 +114,12 @@ class _TestExternal(ExternalBaseTest):
             fixtures_count=1,
             functions_count=2,
         )
+
+    def expected_filename(self, test_name: str, expected_suite_name: str, expected_other_suite_name: str):
+        exit_code, _ = self.execute_test(test_name)
+        assert exit_code == ExitCode.OK
+        assert self.get_test_report(suite_name=expected_suite_name, custom_filename=expected_suite_name)
+        assert self.get_test_report(suite_name=expected_other_suite_name, custom_filename=expected_other_suite_name)
 
     def multiple_fixtures(self, test_name: str, expected_suite_name: str):
         exit_code, _ = self.execute_test(test_name)
@@ -155,7 +167,7 @@ class _TestExternal(ExternalBaseTest):
         assert "KeyError: 'Invalid fixture'" in nested_test_case["failure"]["#text"]
 
     def multiple_fixtures_with_parametrize(
-        self, test_name: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
+            self, test_name: str, first_suite_name: str, second_suite_name: str, third_suite_name: str
     ):
         version = {"version": ["5.1", "6.21980874565", 6.5, "some__long_string_that_is_not_a_number"]}
         letter = {"letter": ["A", "B", "C"]}
@@ -290,21 +302,29 @@ class _TestExternal(ExternalBaseTest):
             fixtures_count=expected_fixtures_count,
             functions_count=expected_case_count,
         )
+        version = {"version": ["5.1", "2.3", "5.01", "1.3.5", "5.1", "2.3", "48.1d", "2.3", 100, "250"]}
+        second_args = dict(**version)
+        parametrize = list()
+        for k, lst in second_args.items():
+            for v in lst:
+                parametrize.append((k, v))
 
-        xml_results = self.get_test_report(suite_name=second_suite_name)
-        self.assert_xml_report_results_with_cases(
-            xml_results,
-            failures=expected_failures,
-            testsuite_tests=expected_fixtures_count,
-            testsuite_name=second_suite_name,
-            fixtures_count=expected_fixtures_count,
-            functions_count=expected_case_count,
-        )
+        for tup in parametrize:
+            xml_results = self.get_test_report(suite_name=second_suite_name, args=str(tup[1]))
+            self.assert_xml_report_results_with_cases(
+                xml_results,
+                failures=expected_failures,
+                testsuite_tests=expected_fixtures_count,
+                testsuite_name=second_suite_name,
+                fixtures_count=expected_fixtures_count,
+                functions_count=expected_case_count,
+            )
 
     def fixture_raise_exception_after_yield(self, test_name: str, expected_suite_name: str):
         expected_case_count = 2
-        expected_fixtures_count = 2
+        expected_fixtures_count = 1
         expected_failures = 1
+        expected_fixture_teardown_count = 1
 
         exit_code, _ = self.execute_test(test_name)
         assert exit_code == ExitCode.TESTS_FAILED
@@ -312,10 +332,11 @@ class _TestExternal(ExternalBaseTest):
         cases = self.assert_xml_report_results_with_cases(
             xml_results,
             failures=expected_failures,
-            testsuite_tests=expected_fixtures_count + expected_case_count,
+            testsuite_tests=expected_fixtures_count + expected_case_count + expected_fixture_teardown_count,
             testsuite_name=expected_suite_name,
             fixtures_count=expected_fixtures_count,
             functions_count=expected_case_count,
+            teardown_count=expected_fixture_teardown_count
         )
 
         expected_fixture_name = "fixture_with_exception_after_yield"
@@ -327,7 +348,6 @@ class _TestExternal(ExternalBaseTest):
         failed_case = failed_cases[0]
         assert failed_case["@name"] == expected_fixture_name
         assert failed_case["failure"]["@type"] == ValueError.__name__
-        assert failed_case["failure"]["@message"].startswith(JunitFixtureTestCase.AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX)
 
     def pytest_suite_no_junit_suite(self, test_name: str, report_name: str):
         parametrize_count = 5
@@ -340,3 +360,77 @@ class _TestExternal(ExternalBaseTest):
         assert int(xml_results["testsuites"]["testsuite"]["@tests"]) == 1 + parametrize_count
         assert int(xml_results["testsuites"]["testsuite"]["@failures"]) == 0
         assert int(xml_results["testsuites"]["testsuite"]["@errors"]) == 0
+
+    def junit_report_inner_suite_exception(self,
+                                           test_name: str,
+                                           first_suite_name: str,
+                                           second_suite_name: str,
+                                           third_suite_name: str,
+                                           fourth_suite_name: str,
+                                           fifth_suite_name: str):
+
+        exit_code, _ = self.execute_test(test_name)
+        assert exit_code == ExitCode.TESTS_FAILED
+
+        number = {"number": [1, 2, 3, 4, 5]}
+
+        parametrize = list()
+        for k, lst in number.items():
+            for v in lst:
+                parametrize.append((k, v))
+
+        tests = {first_suite_name: (0, 0, 1, 1),
+                 third_suite_name: (2, 0, 1, 1),
+                 fourth_suite_name: (2, 0, 1, 1),
+                 fifth_suite_name: (1, 1, 1, 1)}
+        for test, params in tests.items():
+            expected_case_count, expected_fixtures_count, expected_failures, expected_suite_case_count = params
+
+            for tup in parametrize:
+                xml_results = self.get_test_report(suite_name=test, args=str(tup[1]))
+                self.assert_xml_report_results_with_cases(
+                    xml_results,
+                    failures=expected_failures,
+                    testsuite_tests=expected_case_count + expected_fixtures_count + expected_suite_case_count,
+                    testsuite_name=test,
+                    fixtures_count=expected_fixtures_count,
+                    functions_count=expected_case_count,
+                    suite_exception_count=expected_suite_case_count
+                )
+
+        expected_case_count = 0
+        expected_fixtures_count = 0
+        expected_failures = 1
+        expected_suite_case_count = 1
+        xml_results = self.get_test_report(suite_name=second_suite_name)
+        self.assert_xml_report_results_with_cases(
+            xml_results,
+            failures=expected_failures,
+            testsuite_tests=expected_case_count + expected_suite_case_count,
+            testsuite_name=second_suite_name,
+            fixtures_count=expected_fixtures_count,
+            functions_count=expected_case_count,
+            suite_exception_count=expected_suite_case_count
+        )
+
+    def junit_report_missing_cases_when_inside_fixture(
+            self,
+            test_name: str,
+            first_suite_name: str,
+            second_suite_name: str
+    ):
+        exit_code, _ = self.execute_test(test_name)
+        assert exit_code == ExitCode.TESTS_FAILED
+
+        tests = {first_suite_name: (2, 1, 0), second_suite_name: (1, 1, 1)}
+        for test, args in tests.items():
+            expected_case_count, expected_fixtures_count, expected_failures = args
+            xml_results = self.get_test_report(suite_name=test)
+            self.assert_xml_report_results_with_cases(
+                xml_results,
+                failures=expected_failures,
+                testsuite_tests=expected_fixtures_count + expected_case_count,
+                testsuite_name=test,
+                fixtures_count=expected_fixtures_count,
+                functions_count=expected_case_count,
+            )

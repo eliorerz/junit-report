@@ -3,7 +3,7 @@ import shutil
 import pytest
 import xmltodict
 
-from src.junit_report import CaseFailure, JunitTestCase, JunitTestSuite, SuiteNotExistError
+from src.junit_report import CaseFailure, JunitTestCase, JunitTestSuite
 from tests import REPORT_DIR, BaseTest
 
 
@@ -86,7 +86,7 @@ class TestJunitReport(BaseTest):
         with open(test_suite_single_case.REPORT_PATH) as f:
             xml_results = xmltodict.parse(f.read())
 
-        cases = self.assert_xml_report_results(xml_results, testsuite_tests=1, testsuite_name="A_test_suite2")
+        cases = self.assert_xml_report_results(xml_results, testsuite_tests=1, testsuite_name="A_test_suite2").pop()
 
         assert cases["@classname"] == "A"
         assert cases["@name"] == "_test_case1"
@@ -144,19 +144,6 @@ class TestJunitReport(BaseTest):
             i += 1
 
         self.delete_test_suite(exception_class_multiple_cases.test_suite2.__wrapped__)
-
-    def test_register_not_exist(self):
-        from junit_xml import TestCase
-
-        def some_suite():
-            pass
-
-        JunitTestSuite.FAIL_ON_MISSING_SUITE = True
-        with pytest.raises(SuiteNotExistError):
-            JunitTestSuite.register_case(TestCase("case_name"), some_suite)
-
-        JunitTestSuite.FAIL_ON_MISSING_SUITE = False
-        JunitTestSuite.register_case(TestCase("case_name"), some_suite)
 
     def test_register(self):
         start = len(JunitTestSuite._junit_suites)

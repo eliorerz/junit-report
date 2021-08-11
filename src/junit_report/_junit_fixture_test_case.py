@@ -1,13 +1,11 @@
-import re
 from types import GeneratorType
-from typing import Callable, List, Union
+from typing import Callable, Union
 
 import decorator
-from _pytest.mark import Mark
-from _pytest.python import Function
 
 from ._junit_test_case import JunitTestCase, TestCaseCategories
 from ._junit_test_suite import JunitTestSuite
+from .utils import Utils
 
 
 class JunitFixtureTestCase(JunitTestCase):
@@ -21,12 +19,12 @@ class JunitFixtureTestCase(JunitTestCase):
     """
 
     _generator: Union[GeneratorType, None]
-
-    AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX = "[TEARDOWN EXCEPTION]"
+    _inner_test_case_exception: bool
 
     def __init__(self) -> None:
         super().__init__()
         self._generator = None
+        self._inner_test_case_exception = False
 
     def __call__(self, function: Callable) -> Callable:
         self._func = function
@@ -38,10 +36,11 @@ class JunitFixtureTestCase(JunitTestCase):
                 if self._generator:
                     self._teardown_yield_fixture(self._generator)
             except BaseException as e:
-                self._add_failure(e, self.AFTER_YIELD_EXCEPTION_MESSAGE_PREFIX)
+                self._case_data.case.category = TestCaseCategories.FIXTURE_TEARDOWN.value
+                self._add_failure(e)
                 raise
             finally:
-                JunitTestSuite.fixture_cleanup(self._data, self.get_suite_key())
+                JunitTestSuite.fixture_cleanup(self._case_data, self.get_suite_key())
 
         return decorator.decorator(wrapper, function)
 
@@ -62,6 +61,10 @@ class JunitFixtureTestCase(JunitTestCase):
             return next(generator)
         except (StopIteration, TypeError):
             return None
+        except BaseException as e:
+            if Utils.is_case_exception_already_raised(e):
+                self._inner_test_case_exception = True
+            raise
 
     def _on_wrapper_end(self):
         """
@@ -70,76 +73,8 @@ class JunitFixtureTestCase(JunitTestCase):
         collect_all that trigger the suite to collect all cases and export them into xml
         :return: None
         """
-        self._data.case.category = TestCaseCategories.FIXTURE
+        self._case_data.case.category = TestCaseCategories.FIXTURE.value
 
         super(JunitFixtureTestCase, self)._on_wrapper_end()
-        if len(self._data.case.failures) > 0:
-            JunitTestSuite.collect_all()
-
-    def _get_suite(self) -> Union[Callable, None]:
-        """
-        Get suite function as unique key.
-        This function handles also on case that the test suite function decorated with pytest.mark.parametrize
-        :return: Wrapped Suite function instance
-        """
-
-        for f_locals in [
-            stack_local
-            for stack_local in self._stack_locals
-            if "self" in stack_local and isinstance(stack_local["self"], Function)
-        ]:
-            func = f_locals["self"]
-
-            try:
-                # if pytest.mark.parametrize exist, get actual function from class while ignoring the add parameters
-                if hasattr(func, "own_markers") and len(func.own_markers) > 0:
-                    mark_function = self._get_mark_function(func.own_markers, func)
-                    if mark_function:
-                        return mark_function
-
-                if func.cls and self._is_suite_exist(func.cls, func.name):
-                    return getattr(func.cls, func.name).__wrapped__
-
-                if func.cls is None and self._is_suite_exist(func.module, func.name):
-                    return getattr(func.module, func.name).__wrapped__
-            except AttributeError:
-                pass
-
-        return None
-
-    @classmethod
-    def _is_suite_exist(cls, obj: Union, func_name: str):
-        func = getattr(obj, func_name)
-        if hasattr(func, "__wrapped__"):
-            return JunitTestSuite.is_suite_exist(func.__wrapped__)
-        return False
-
-    def _get_mark_function(self, own_markers: List[Mark], func: Function) -> Union[Callable, None]:
-        """
-        If mark parameterize decorate test suite with given fixture _get_mark_function is searching
-        for all parametrize arguments and permutations.
-        If mark type is parametrize, set self._parametrize with the current argument permutation.
-        The representation of function name and arguments for N parametrize marks are as followed:
-            func.name = some_func_name[param1-param2-...-paramN]
-        :param own_markers: Pytest markers taken from func stack_locals
-        :param func: wrapped function contained with pytest Function object
-        :return: wrapped function itself
-        """
-        marks = [m for m in own_markers if m.name == "parametrize"]
-        marks_count = len(marks)
-
-        if marks_count == 0:
-            return None
-
-        params_regex = "-".join(["(.*?)"] * marks_count)
-        args = list(re.compile(r"(.*?)\[{0}]".format(params_regex)).findall(func.name).pop())
-        func_name = args.pop(0)
-
-        params = list()
-        for i in range(marks_count):
-            params.append((marks[i].args[0], args[i]))
-
-        if func.cls:
-            return getattr(func.cls, func_name).__wrapped__
-        else:
-            return getattr(func.module, func_name).__wrapped__
+        if len(self._case_data.case.failures) > 0 or self._inner_test_case_exception:
+            JunitTestSuite.collect_all(self._inner_test_case_exception)

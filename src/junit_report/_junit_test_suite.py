@@ -1,15 +1,13 @@
 import datetime
 import os
+import traceback
 from pathlib import Path
 from typing import Callable, ClassVar, Dict, List, Union
 
 from junit_xml import TestCase, TestSuite, to_xml_report_string
 
 from ._junit_decorator import JunitDecorator
-
-
-class SuiteNotExistError(KeyError):
-    """ Test Suite decorator name is not exists in suites poll """
+from .utils import Utils, TestCaseCategories, TestCaseData, CaseFailure, PytestUtils
 
 
 class DuplicateSuiteError(KeyError):
@@ -34,14 +32,13 @@ class JunitTestSuite(JunitDecorator):
     suite: Union[TestSuite, None]
 
     DEFAULT_REPORT_PATH_KEY = "JUNIT_REPORT_DIR"
-    FAIL_ON_MISSING_SUITE_KEY = "FAIL_ON_MISSING_SUITE"
 
     XML_REPORT_FORMAT = "junit_{suite_name}_report{args}.xml"
-    FAIL_ON_MISSING_SUITE = os.getenv(FAIL_ON_MISSING_SUITE_KEY, "False").lower() in ["true", "1", "yes", "y"]
 
-    def __init__(self, report_dir: Path = None):
+    def __init__(self, report_dir: Path = None, custom_filename: str = None):
         """
         :param report_dir: Target directory, created if not exists
+        :param custom_filename: If set, xml report will set to <exported_filename>.xml
         """
         super().__init__()
         self._report_dir = self.get_report_dir(report_dir)
@@ -49,15 +46,25 @@ class JunitTestSuite(JunitDecorator):
         self.suite = None
         self._timestamp = datetime.datetime.now()
         self._has_uncollected_fixtures = False
+        self._self_test_case = None
+        self._custom_filename = custom_filename
 
     def _on_call(self):
         self._register()
 
-    def _on_wrapper_end(self):
+    def _on_wrapper_end(self, force=False):
         self.suite = TestSuite(
             name=f"{self._get_class_name()}_{self.name}", test_cases=self._get_cases(), timestamp=self._timestamp
         )
-        self._export(self.suite)
+        self._export(self.suite, force)
+
+    @classmethod
+    def get_report_file_name(cls, suite_name: str, args: str = None, custom_filename: str = None):
+        if custom_filename:
+            return f"{custom_filename}.xml"
+        if args:
+            return cls.XML_REPORT_FORMAT.format(suite_name=suite_name, args=f"[{args}]")
+        return cls.XML_REPORT_FORMAT.format(suite_name=suite_name, args="")
 
     @classmethod
     def get_suite(cls, suite_key: Callable) -> Union["JunitTestSuite", None]:
@@ -77,13 +84,13 @@ class JunitTestSuite(JunitDecorator):
         return report_dir
 
     @classmethod
-    def collect_all(cls):
+    def collect_all(cls, force=False):
         """
         Collect all junit test suites reports from external source
         :return: None
         """
         for junit_suite in cls._junit_suites.values():
-            cls._on_wrapper_end(self=junit_suite)
+            cls._on_wrapper_end(self=junit_suite, force=force)
 
     @classmethod
     def is_suite_exist(cls, suite_func: Callable):
@@ -99,9 +106,6 @@ class JunitTestSuite(JunitDecorator):
         """
         if cls.is_suite_exist(suite_func):
             cls._add_case(cls.get_suite(suite_func), test_data)
-        else:
-            if cls.FAIL_ON_MISSING_SUITE:
-                raise SuiteNotExistError(f"Can't find suite named {suite_func} for {test_data} test case")
 
     def _register(self):
         if self._func in JunitTestSuite._junit_suites:
@@ -109,6 +113,8 @@ class JunitTestSuite(JunitDecorator):
         JunitTestSuite._junit_suites[self._func] = self
 
     def _get_cases(self):
+        if self._self_test_case:
+            return [data.case for data in self._cases] + [self._self_test_case]
         return [data.case for data in self._cases]
 
     def _add_case(self, test_data):
@@ -116,20 +122,17 @@ class JunitTestSuite(JunitDecorator):
             self._has_uncollected_fixtures = True
         return self._cases.append(test_data)
 
-    def _get_parametrize_values(self) -> str:
+    def _get_parametrize_as_str(self) -> str:
         """
         In case of pytest parametrize, this function collect and return parametrizes values
         :return: underscore separated parametrize values
         """
-        values = ""
-        test_cases = [test_case_data for test_case_data in self._cases if test_case_data.parametrize is not None]
-        if test_cases:
-            marks = {c.get_case_key() for c in self._cases if len(c.get_case_key()) > 0}
-            if marks:
-                values = "_".join([str(tup[1]) for tup in marks.pop()])
-        return values
+        parameterize = PytestUtils.get_suite_pytest_parameterized(self._cases, self._func, self._stack_locals)
+        if parameterize:
+            return "_".join(str(tup[1]) for tup in parameterize)
+        return ""
 
-    def _export(self, suite: TestSuite) -> None:
+    def _export(self, suite: TestSuite, force=False) -> None:
         """
         Export test suite to JUnit xml file
         :param suite: TestSuite to export
@@ -138,9 +141,11 @@ class JunitTestSuite(JunitDecorator):
         if len(suite.test_cases) == 0:
             return
 
-        if not self._has_uncollected_fixtures:
-            values = self._get_parametrize_values()
-            path = self._report_dir.joinpath(self.XML_REPORT_FORMAT.format(suite_name=suite.name, args=values))
+        if not self._has_uncollected_fixtures or force:
+            values = self._get_parametrize_as_str()
+            path = self._report_dir.joinpath(
+                self.get_report_file_name(suite_name=suite.name, args=values, custom_filename=self._custom_filename)
+            )
             xml_string = to_xml_report_string([suite])
 
             os.makedirs(self._report_dir, exist_ok=True)
@@ -164,9 +169,9 @@ class JunitTestSuite(JunitDecorator):
         """
         junit_suite = cls.get_suite(suite_func)
         if junit_suite and junit_suite._cases:
-            first_fixture = junit_suite._cases[0].case
-            if first_fixture == test_data.case:
-                junit_suite._collect_yield()
+            for may_be_fixture in junit_suite._cases:
+                if may_be_fixture.case == test_data.case:
+                    return junit_suite._collect_yield()
 
     def _collect_yield(self):
         """
@@ -175,3 +180,17 @@ class JunitTestSuite(JunitDecorator):
         """
         self._has_uncollected_fixtures = False
         self._export(self.suite)
+
+    def _on_exception(self, e: BaseException):
+        if Utils.is_case_exception_already_raised(e):
+            raise e
+
+        self._handle_in_suite_exception(e)
+
+    def _handle_in_suite_exception(self, exception: BaseException):
+        self._self_test_case = Utils.get_new_test_case(self._func, self._get_class_name(), TestCaseCategories.SUITE)
+
+        case_data = TestCaseData(_start_time=self._start_time, case=self._self_test_case, _func=self._func)
+        failure = CaseFailure(message=str(exception), output=traceback.format_exc(), type=exception.__class__.__name__)
+        case_data.case.failures.append(failure)
+        raise exception

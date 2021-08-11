@@ -3,12 +3,17 @@ import re
 import time
 from abc import ABC, abstractmethod
 from contextlib import suppress
-from typing import Any, Callable
+from typing import Any, Callable, Union, List, Dict
 
 import decorator
 
 
 class JunitDecorator(ABC):
+
+    _func: Union[Callable, None]
+    _start_time: Union[float, None]
+    _stack_locals: List[Dict[str, Any]]
+
     def __init__(self) -> None:
         self._func = None
         self._start_time = None
@@ -26,6 +31,12 @@ class JunitDecorator(ABC):
             return self._wrapper(function, *args, **kwargs)
 
         return decorator.decorator(wrapper, function)
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__} {self.name}"
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__} {self.name}"
 
     @property
     def name(self):

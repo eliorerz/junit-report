@@ -16,29 +16,32 @@ class JunitTestCase(JunitDecorator):
     TestCase will fail (TestCase failure) only when exception occurs during execution.
     """
 
-    _func: Union[Callable, None]
     _stack_locals: List[Dict[str, Any]]
-    _data: Union[TestCaseData, None]
+    _case_data: Union[TestCaseData, None]
+    _pytest_function: Union[pytest.Function, None]
 
     def __init__(self) -> None:
         super().__init__()
         self._stack_locals = list()
-        self._data = None
+        self._case_data = None
+        self._pytest_function = None
 
     @property
     def name(self):
-        if self._func:
-            return self._data.name
+        return self._case_data.name if self._case_data.name else self._func.__name__
 
     def _on_wrapper_start(self, function):
         super()._on_wrapper_start(function)
         case = Utils.get_new_test_case(function, self._get_class_name(), TestCaseCategories.FUNCTION)
-        self._data = TestCaseData(_start_time=self._start_time, case=case, _func=function)
+        self._case_data = TestCaseData(_start_time=self._start_time, case=case, _func=function)
+        self._pytest_function = [
+            stack_local for stack_local in self._stack_locals
+            if "self" in stack_local and isinstance(stack_local["self"], pytest.Function)][0]["self"]
 
     def _add_failure(self, e: BaseException, message_prefix: str = ""):
         message = f"{message_prefix} {str(e)}" if message_prefix else str(e)
         failure = CaseFailure(message=message, output=traceback.format_exc(), type=e.__class__.__name__)
-        self._data.case.failures.append(failure)
+        self._case_data.case.failures.append(failure)
 
     def _on_exception(self, e: BaseException):
         if Utils.is_case_exception_already_raised(e):
@@ -48,8 +51,8 @@ class JunitTestCase(JunitDecorator):
         raise e
 
     def _on_wrapper_end(self):
-        self._data.set_fin_time()
-        JunitTestSuite.register_case(self._data, self.get_suite_key())
+        self._case_data.set_fin_time()
+        JunitTestSuite.register_case(self._case_data, self.get_suite_key())
 
     def get_suite_key(self) -> Union[Callable, None]:
         """
@@ -64,33 +67,29 @@ class JunitTestCase(JunitDecorator):
 
         return None
 
-    def _set_parameterized(self, pytest_function: pytest.Function, parameterized: List = None):
+    def _set_parameterized(self, parameterized: List = None):
         if not parameterized:
-            parameterized = PytestUtils.get_case_pytest_parameterized(pytest_function)
+            parameterized = PytestUtils.get_case_pytest_parameterized(self._pytest_function)
 
-        if parameterized and not self._data.parametrize:
-            self._data.set_parametrize(parameterized)
+        if parameterized and not self._case_data.parametrize:
+            self._case_data.set_parametrize(parameterized)
 
     def get_suite(self):
         stack_locals = [stack_local for stack_local in self._stack_locals if "self" in stack_local]
         function_locals = [stack_local for stack_local in stack_locals if "function" in stack_local]
-        pytest_function = [
-            stack_local
-            for stack_local in self._stack_locals
-            if "self" in stack_local and isinstance(stack_local["self"], pytest.Function)][0]["self"]
 
-        self._set_parameterized(pytest_function)
+        self._set_parameterized()
         is_inside_fixture = False
 
         suite_func = self._get_function_suite(function_locals)
         if suite_func is None:
             is_inside_fixture = True
-            suite_func = PytestUtils.get_fixture_suite(pytest_function)
-            fixture_params = PytestUtils.get_fixture_parameterized(pytest_function)
+            suite_func = PytestUtils.get_fixture_suite(self._pytest_function)
+            fixture_params = PytestUtils.get_fixture_parameterized(self._pytest_function)
             if fixture_params:
-                self._set_parameterized(pytest_function, fixture_params)
+                self._set_parameterized(fixture_params)
 
-        self._data.is_inside_fixture = is_inside_fixture
+        self._case_data.is_inside_fixture = is_inside_fixture
         return suite_func
 
     def _get_function_suite(self, function_locals: List[Dict[str, Any]]):
@@ -99,8 +98,8 @@ class JunitTestCase(JunitDecorator):
         for f_locals in function_locals:
             suite = f_locals["self"]
             if isinstance(suite, JunitTestCase) and f_locals["function"].__name__ != self.name:
-                if not self._data.has_parent:
-                    self._data.set_parent(f_locals["function"].__name__)
+                if not self._case_data.has_parent:
+                    self._case_data.set_parent(f_locals["function"].__name__)
 
             if isinstance(suite, JunitTestSuite):
                 suite_func = f_locals["function"]

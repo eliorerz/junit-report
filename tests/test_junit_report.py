@@ -1,4 +1,6 @@
 import shutil
+import subprocess
+from pathlib import Path
 
 import pytest
 import xmltodict
@@ -202,3 +204,18 @@ class TestJunitReport(BaseTest):
 
         JunitTestSuite._junit_suites.pop(ClassA.test_suite.__wrapped__)
         JunitTestSuite._junit_suites.pop(ClassB.test_suite.__wrapped__)
+
+    def test_module_with_main(self):
+        cmd = f"python {Path.cwd().joinpath('external_tests/module_tests/_test_module_with_main.py')}"
+        assert subprocess.check_output(cmd.split())
+
+        with open(REPORT_DIR.joinpath("junit__test_module_with_main_test_suite_report.xml")) as f:
+            xml_results = xmltodict.parse(f.read())
+
+        cases = self.assert_xml_report_results(xml_results, testsuite_tests=3,
+                                               testsuite_name="_test_module_with_main_test_suite")
+
+        expected_classname = '_test_module_with_main'
+        assert cases[0]["@classname"] == expected_classname
+        assert cases[1]["@classname"] == f"{expected_classname}.{cases[2]['@name']}"
+        assert cases[2]["@classname"] == expected_classname

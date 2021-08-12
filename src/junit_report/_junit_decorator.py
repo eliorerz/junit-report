@@ -67,7 +67,7 @@ class JunitDecorator(ABC):
             classname, _ = re.compile(r"(\w+)\.(\w+)\sat\s").findall(str(self._func))[0]
             return classname
         except IndexError:
-            return module.__name__
+            return inspect.getmodulename(inspect.getmodule(module).__file__)
 
     @abstractmethod
     def _on_wrapper_end(self) -> None:

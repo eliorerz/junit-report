@@ -49,22 +49,44 @@ class JunitFixtureTestCase(JunitTestCase):
         """Execute the teardown of a fixture function by advancing the iterator
         after the yield and ensure the iteration ends (if not it means there is
         more than one yield in the function)."""
+        if type(it) != GeneratorType:
+            # Nothing needs to be done for non-generator fixtures
+            return
+
         try:
             next(it)
         except StopIteration:
             pass
 
     def _execute_wrapped_function(self, *args, **kwargs):
-        generator = super()._execute_wrapped_function(*args, **kwargs)
-        try:
-            self._generator = generator
-            return next(generator)
-        except (StopIteration, TypeError):
-            return None
-        except BaseException as e:
-            if Utils.is_case_exception_already_raised(e):
-                self._inner_test_case_exception = True
-            raise
+        fixture_ret = super()._execute_wrapped_function(*args, **kwargs)
+
+        if type(fixture_ret) == GeneratorType:
+            # This is likely a pytest fixture that uses the `yield` teardown pattern
+            generator = fixture_ret
+
+            if generator.__name__ == "<genexpr>":
+                # This is actually* a regular generator expression the user is trying to return, not a 
+                # pytest generator function used for setup / teardown. Just return it without special
+                # handling.
+                # * (Generator functions have their `__name__` attribute equal to the actual function name)
+                return generator
+
+            # TODO: What if the user actually wants to return a generator function from their fixture?
+            #       Find a way to tell apart `yield` for teardown vs user actually returning a generator function.
+
+            try:
+                self._generator = generator
+                return next(generator)
+            except (StopIteration, TypeError):
+                return None
+            except BaseException as e:
+                if Utils.is_case_exception_already_raised(e):
+                    self._inner_test_case_exception = True
+                raise
+        else:
+            # This is a regular fixture that simply returns a value
+            return fixture_ret
 
     def _on_wrapper_end(self):
         """

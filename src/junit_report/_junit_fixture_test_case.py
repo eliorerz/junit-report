@@ -100,3 +100,9 @@ class JunitFixtureTestCase(JunitTestCase):
         super(JunitFixtureTestCase, self)._on_wrapper_end()
         if len(self._case_data.case.failures) > 0 or self._inner_test_case_exception:
             JunitTestSuite.collect_all(True)
+
+    def _on_exception(self, e: BaseException):
+        if Utils.is_case_exception_already_raised(e):
+            # Check if test-case raised exception inside fixture
+            self._inner_test_case_exception = True
+        super()._on_exception(e)

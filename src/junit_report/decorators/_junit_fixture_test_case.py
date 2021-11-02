@@ -5,7 +5,7 @@ import decorator
 
 from ._junit_test_case import JunitTestCase, TestCaseCategories
 from ._junit_test_suite import JunitTestSuite
-from .utils import Utils
+from ..utils import Utils
 
 
 class JunitFixtureTestCase(JunitTestCase):
@@ -66,7 +66,7 @@ class JunitFixtureTestCase(JunitTestCase):
             generator = fixture_ret
 
             if generator.__name__ == "<genexpr>":
-                # This is actually* a regular generator expression the user is trying to return, not a 
+                # This is actually* a regular generator expression the user is trying to return, not a
                 # pytest generator function used for setup / teardown. Just return it without special
                 # handling.
                 # * (Generator functions have their `__name__` attribute equal to the actual function name)

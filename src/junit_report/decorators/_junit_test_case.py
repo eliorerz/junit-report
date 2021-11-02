@@ -6,7 +6,7 @@ import pytest
 
 from ._junit_decorator import JunitDecorator
 from ._junit_test_suite import JunitTestSuite
-from .utils import TestCaseCategories, TestCaseData, CaseFailure, Utils, PytestUtils
+from ..utils import TestCaseCategories, TestCaseData, CaseFailure, Utils, PytestUtils
 
 
 class JunitTestCase(JunitDecorator):

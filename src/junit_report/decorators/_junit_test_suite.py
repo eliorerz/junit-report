@@ -7,7 +7,7 @@ from typing import Callable, ClassVar, Dict, List, Union
 from junit_xml import TestCase, TestSuite, to_xml_report_string
 
 from ._junit_decorator import JunitDecorator
-from .utils import Utils, TestCaseCategories, TestCaseData, CaseFailure, PytestUtils
+from ..utils import Utils, TestCaseCategories, TestCaseData, CaseFailure, PytestUtils
 
 
 class DuplicateSuiteError(KeyError):

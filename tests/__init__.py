@@ -37,10 +37,14 @@ class BaseTest:
     ) -> List[OrderedDict]:
         cases = cls.assert_xml_report_results(xml_results, testsuite_tests, testsuite_name, failures, errors)
 
-        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE.value]) == fixtures_count
-        assert len([c for c in cases if c["@class"] == TestCaseCategories.FIXTURE_TEARDOWN.value]) == teardown_count
-        assert len([c for c in cases if c["@class"] == TestCaseCategories.FUNCTION.value]) == functions_count
-        assert len([c for c in cases if c["@class"] == TestCaseCategories.SUITE.value]) == suite_exception_count
+        assert len([c for c in cases if "@class" in c and c["@class"] == TestCaseCategories.FIXTURE.value]) \
+               == fixtures_count
+        assert len([c for c in cases if "@class" in c and c["@class"] == TestCaseCategories.FIXTURE_TEARDOWN.value]) \
+               == teardown_count
+        assert len([c for c in cases if "@class" in c and c["@class"] == TestCaseCategories.FUNCTION.value]) \
+               == functions_count
+        assert len([c for c in cases if "@class" in c and c["@class"] == TestCaseCategories.SUITE.value]) \
+               == suite_exception_count
         return cases
 
     @staticmethod
@@ -61,6 +65,8 @@ class BaseTest:
         assert int(testsuite["@tests"]) == testsuite_tests
         assert testsuite["@name"] == testsuite_name
 
+        if "testcase" not in testsuite:
+            return [OrderedDict()]
         cases = testsuite["testcase"]
         if isinstance(cases, OrderedDict):
             return [cases]

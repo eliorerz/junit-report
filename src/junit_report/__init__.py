@@ -1,5 +1,6 @@
-from .decorators import JunitFixtureTestCase, DuplicateSuiteError, JunitTestCase, CaseFailure, JunitTestSuite, \
-    TestCaseCategories
+from .decorators import JunitFixtureTestCase, DuplicateSuiteError, JunitTestCase, JunitTestSuite, TestCaseCategories
+from .json_junit_exporter import JsonJunitExporter, CaseFormatKeys
+from .utils import CaseFailure
 
 __all__ = [
     "JunitTestCase",
@@ -7,5 +8,7 @@ __all__ = [
     "TestCaseCategories",
     "JunitFixtureTestCase",
     "JunitTestSuite",
+    "JsonJunitExporter",
+    "CaseFormatKeys",
     "DuplicateSuiteError",
 ]

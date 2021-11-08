@@ -66,10 +66,18 @@ class TestJsonJunitExporter(BaseTest):
 
     def test_parsed_events(self):
         events = json.loads(JSON_DATA)
-        exporter = JsonJunitExporter(fmt=CaseFormatKeys(case_name="id", severity_key="severity"))
-        file_name = exporter.collect(events, suite_name="my_test_suite", report_dir=REPORT_DIR)
+        failures_exporter = JsonJunitExporter(fmt=CaseFormatKeys(case_name="id", severity_key="severity"),
+                                              export_on_success=False)
+        file_name = failures_exporter.collect(events, suite_name="failures_test_suite", report_dir=REPORT_DIR)
         self.assert_xml_report_results_with_cases(self.get_test_report(Path(file_name)),
-                                                  testsuite_tests=2, failures=2, testsuite_name="my_test_suite")
+                                                  testsuite_tests=2, failures=2, testsuite_name="failures_test_suite")
+
+    def test_all_parsed_events(self):
+        events = json.loads(JSON_DATA)
+        all_exporter = JsonJunitExporter(fmt=CaseFormatKeys(case_name="id", severity_key="severity"))
+        file_name = all_exporter.collect(events, suite_name="all_test_suite", report_dir=REPORT_DIR)
+        self.assert_xml_report_results_with_cases(self.get_test_report(Path(file_name)),
+                                                  testsuite_tests=6, failures=2, testsuite_name="all_test_suite")
 
     def test_empty_events(self):
         events = json.loads("[]")

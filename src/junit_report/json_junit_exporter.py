@@ -48,7 +48,7 @@ class JsonJunitExporter:
         case.failures.append(failure)
         return case
 
-    def collect(self, entries: List[Dict[str, str]], report_dir: Optional[Path], suite_name: str) -> str:
+    def collect(self, entries: List[Dict[str, str]], suite_name: str, report_dir: Optional[Path] = None) -> str:
         report_dir = Utils.get_report_dir(report_dir)
 
         test_cases = list()

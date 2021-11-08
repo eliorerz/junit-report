@@ -31,8 +31,6 @@ class JunitTestSuite(JunitDecorator):
     _func: Union[Callable, None]
     suite: Union[TestSuite, None]
 
-    DEFAULT_REPORT_PATH_KEY = "JUNIT_REPORT_DIR"
-
     XML_REPORT_FORMAT = "junit_{suite_name}_report{args}.xml"
 
     def __init__(self, report_dir: Path = None, custom_filename: str = None):
@@ -41,7 +39,7 @@ class JunitTestSuite(JunitDecorator):
         :param custom_filename: If set, xml report will set to <exported_filename>.xml
         """
         super().__init__()
-        self._report_dir = self.get_report_dir(report_dir)
+        self._report_dir = Utils.get_report_dir(report_dir)
         self._cases = list()
         self.suite = None
         self._timestamp = datetime.datetime.now()
@@ -76,12 +74,6 @@ class JunitTestSuite(JunitDecorator):
         if cls.is_suite_exist(suite_key):
             return cls._junit_suites[suite_key]
         return None
-
-    @classmethod
-    def get_report_dir(cls, report_dir: Union[Path, None]) -> Path:
-        if report_dir is None:
-            return Path(os.getenv(cls.DEFAULT_REPORT_PATH_KEY, Path.cwd()))
-        return report_dir
 
     @classmethod
     def collect_all(cls, force=False):

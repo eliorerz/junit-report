@@ -2,11 +2,11 @@ import datetime
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 
 from junit_xml import TestCase, to_xml_report_string, TestSuite
 
-from .utils import CaseFailure
+from .utils import CaseFailure, Utils
 
 
 @dataclass
@@ -48,7 +48,9 @@ class JsonJunitExporter:
         case.failures.append(failure)
         return case
 
-    def collect(self, entries: List[Dict[str, str]], report_dir: Path, suite_name: str) -> str:
+    def collect(self, entries: List[Dict[str, str]], report_dir: Optional[Path], suite_name: str) -> str:
+        report_dir = Utils.get_report_dir(report_dir)
+
         test_cases = list()
         for entry in entries:
             severity = entry.get(self._format.severity_key, None)

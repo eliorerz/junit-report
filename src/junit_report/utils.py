@@ -1,10 +1,12 @@
+import os
 import re
 import time
 from abc import ABC
 from contextlib import suppress
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Any, Tuple, List, Union, Dict
+from pathlib import Path
+from typing import Callable, Any, Tuple, List, Union, Dict, Optional
 
 import pytest
 from _pytest.mark import Mark
@@ -64,6 +66,7 @@ class TestCaseData:
 
 class Utils(ABC):
     JUNIT_EXCEPTION_TAG = "__is_junit_exception__"
+    DEFAULT_REPORT_PATH_KEY = "JUNIT_REPORT_DIR"
 
     @staticmethod
     def get_new_test_case(func: Callable, classname: str, category: TestCaseCategories) -> TestCase:
@@ -91,6 +94,12 @@ class Utils(ABC):
         if func.cls:
             return getattr(func.cls, func_name).__wrapped__
         return getattr(func.module, func_name).__wrapped__
+
+    @classmethod
+    def get_report_dir(cls, report_dir: Optional[Path]) -> Path:
+        if report_dir is None:
+            return Path(os.getenv(cls.DEFAULT_REPORT_PATH_KEY, Path.cwd()))
+        return report_dir
 
 
 class PytestUtils:

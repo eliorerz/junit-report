@@ -130,7 +130,7 @@ class JunitTestSuite(JunitDecorator):
         :param suite: TestSuite to export
         :return: None
         """
-        if len(suite.test_cases) == 0:
+        if not suite or len(suite.test_cases) == 0:
             return
 
         if not self._has_uncollected_fixtures or force:

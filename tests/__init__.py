@@ -80,7 +80,7 @@ class BaseTest:
 class ExternalBaseTest(BaseTest):
     @classmethod
     @pytest.fixture(autouse=True)
-    def teardown(cls):
+    def cleanup(cls):
         yield
         shutil.rmtree(REPORT_DIR, ignore_errors=True)
         JunitTestSuite._junit_suites = dict()

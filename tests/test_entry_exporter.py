@@ -60,7 +60,7 @@ class TestJsonJunitExporter(BaseTest):
 
     @classmethod
     @pytest.fixture(autouse=True)
-    def teardown(cls):
+    def cleanup(cls):
         yield
         shutil.rmtree(REPORT_DIR, ignore_errors=True)
 

@@ -57,7 +57,11 @@ class JsonJunitExporter:
             case.stdout = msg
         return case
 
-    def collect(self, entries: List[Dict[str, str]], suite_name: str, report_dir: Optional[Path] = None) -> str:
+    def collect(self, entries: List[Dict[str, str]],
+                suite_name: str,
+                report_dir: Optional[Path] = None,
+                xml_suffix: str = ""
+                ) -> str:
         report_dir = Utils.get_report_dir(report_dir)
 
         test_cases = list()
@@ -70,7 +74,8 @@ class JsonJunitExporter:
         xml_report = to_xml_report_string(test_suites=[TestSuite(name=suite_name,
                                                                  test_cases=test_cases,
                                                                  timestamp=self._get_suite_timestamp(test_cases))])
-        with open(report_dir.joinpath(f"{self._report_prefix}_{suite_name}.xml"), "w") as f:
+        file_name = f"{self._report_prefix}_{suite_name}{f'_{xml_suffix}' if xml_suffix else ''}.xml"
+        with open(report_dir.joinpath(file_name), "w") as f:
             f.write(xml_report)
             return f.name
 

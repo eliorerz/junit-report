@@ -85,3 +85,14 @@ class TestJsonJunitExporter(BaseTest):
         file_name = exporter.collect(events, suite_name="empty_test_suite", report_dir=REPORT_DIR)
         self.assert_xml_report_results_with_cases(self.get_test_report(Path(file_name)),
                                                   testsuite_tests=0, failures=0, testsuite_name="empty_test_suite")
+
+    def test_static_events(self):
+        events = json.loads(JSON_DATA)
+        test_name = "my-static-test-name"
+        fmt = CaseFormatKeys(case_name=test_name, severity_key="severity", static_case_name=True)
+        all_exporter = JsonJunitExporter(fmt=fmt)
+        file_name = all_exporter.collect(events, suite_name="all_test_suite", report_dir=REPORT_DIR)
+        cases = self.assert_xml_report_results_with_cases(self.get_test_report(Path(file_name)),
+                                                          testsuite_tests=6, failures=2,
+                                                          testsuite_name="all_test_suite")
+        assert all([c["@name"] == test_name for c in cases])

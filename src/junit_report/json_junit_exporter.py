@@ -16,6 +16,7 @@ class CaseFormatKeys:
     case_classname: str = None
     case_category: str = None
     case_timestamp: str = None
+    static_case_name: bool = False
 
 
 class JsonJunitExporter:
@@ -39,11 +40,20 @@ class JsonJunitExporter:
         self._format.case_classname = self._format.case_classname or self._format.case_name
         self._format.case_category = self._format.case_category or self._format.case_name
 
+    def _get_case_name(self, entry: Dict[str, str]) -> str:
+        return self._format.case_name if self._format.static_case_name else entry[self._format.case_name]
+
+    def _get_case_classname(self, entry: Dict[str, str]) -> str:
+        return self._format.case_name if self._format.static_case_name else entry[self._format.case_classname]
+
+    def _get_case_category(self, entry: Dict[str, str]) -> str:
+        return self._format.case_name if self._format.static_case_name else entry[self._format.case_category]
+
     def _get_test_case(self, entry: Dict[str, str], severity: str) -> Union[TestCase, None]:
         msg = json.dumps(entry, indent=4)
-        case = TestCase(name=entry[self._format.case_name],
-                        classname=entry[self._format.case_classname],
-                        category=entry[self._format.case_category],
+        case = TestCase(name=self._get_case_name(entry),
+                        classname=self._get_case_classname(entry),
+                        category=self._get_case_category(entry),
                         timestamp=entry.get(self._format.case_timestamp, str(datetime.datetime.now()))
                         )
 
